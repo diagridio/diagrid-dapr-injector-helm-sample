@@ -1,0 +1,19 @@
+apiVersion: dapr.io/v1alpha1
+kind: HTTPEndpoint
+metadata:
+  name: dapr-system
+spec:
+  baseUrl: <REPLACE-WITH-BASEURL>
+  clientTLS:
+    rootCA:
+      secretKeyRef:
+        name: <REPLACE-WITH-SECRET-NAME>
+        key: <REPLACE-WITH-SECRET-KEY>
+    certificate:
+      secretKeyRef:
+        name: <REPLACE-WITH-SECRET-NAME>
+        key: <REPLACE-WITH-SECRET-KEY>
+    privateKey:
+      secretKeyRef:
+        name: <REPLACE-WITH-SECRET-NAME>
+        key: <REPLACE-WITH-SECRET-KEY>

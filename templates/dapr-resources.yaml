@@ -1,0 +1,9 @@
+{{- include "dapr.resource" (dict "namespace" .Release.Namespace "files" (.Files.Glob "resources/configurations/*") "name" "dapr-configurations" ) }}
+---
+{{- include "dapr.resource" (dict "namespace" .Release.Namespace "files" (.Files.Glob "resources/components/*") "name" "dapr-components" ) }}
+---
+{{- include "dapr.resource" (dict "namespace" .Release.Namespace "files" (.Files.Glob "resources/httpendpoints/*") "name" "dapr-httpendpoints" ) }}
+---
+{{- include "dapr.resource" (dict "namespace" .Release.Namespace "files" (.Files.Glob "resources/resiliencies/*") "name" "dapr-resiliencies" ) }}
+---
+{{- include "dapr.resource" (dict "namespace" .Release.Namespace "files" (.Files.Glob "resources/subscriptions/*") "name" "dapr-subscriptions" ) }}

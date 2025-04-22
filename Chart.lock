@@ -1,0 +1,9 @@
+dependencies:
+- name: diagrid-dapr-injector
+  repository: file://../diagrid-dapr-injector
+  version: 0.1.0
+- name: redis
+  repository: https://charts.bitnami.com/bitnami
+  version: 20.11.3
+digest: sha256:beee913d1dde935a8a325250028bf7c19664d96348251152291a7b9b43c2f680
+generated: "2025-03-27T20:12:00.98085Z"

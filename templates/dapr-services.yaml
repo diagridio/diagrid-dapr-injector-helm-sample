@@ -1,0 +1,5 @@
+{{- include "diagrid.dapr.service" (dict "appId" "service-dapr-system-x" "podAnnotations" .Values.podAnnotations "namespace" .Release.Namespace) }}
+---
+{{- include "diagrid.dapr.service" (dict "appId" "service-pong" "podAnnotations" .Values.podAnnotationsA "namespace" .Release.Namespace) }}
+---
+{{- include "diagrid.dapr.service" (dict "appId" "service-ping" "podAnnotations" .Values.podAnnotationsB "namespace" .Release.Namespace) }}

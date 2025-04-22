@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: service-ping
+  namespace: {{.Release.Namespace}}
+  labels:
+    app: service-ping
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: service-ping
+  template:
+    metadata:
+      annotations:
+        {{ toYaml .Values.podAnnotationsPing | nindent 8 | trim}}
+      labels:
+        app: service-ping
+        dapr.io/app-id: service-ping
+        dapr.io/metrics-enabled: "true"
+        dapr.io/sidecar-injected: "true"
+    spec:
+      containers:
+      - name: service-ping
+        image: nelsonparente00/ping-service-c2c4046e34281a484ef2a5764cfd5341:latest
+        imagePullPolicy: Always
+        env:
+        - name: DAPR_HTTP_PORT
+          value: "3500"
+        - name: DAPR_GRPC_PORT
+          value: "50001"
+        - name: APP_PROTOCOL
+          value: http
+      {{- include "diagrid.dapr.sidecar" (dict "podAnnotations" .Values.podAnnotationsPing "helmCtx" .) | indent 6 }}
+      volumes:
+      {{- include "diagrid.dapr.identity-token-volume" . | indent 6 }}
+      {{- if .Values.diagrid_dapr_injector.injectDaprResources }}
+      {{- include "diagrid.dapr.resources-volumes" (dict "podAnnotations" .Values.podAnnotations "helmCtx" .) | indent 6 }}
+      {{- end }}
