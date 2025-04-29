@@ -162,6 +162,11 @@ After configuring name resolution, you need to define the necessary services usi
 
 Replace APP_ID with the appropriate application ID. This ensures that Dapr can correctly resolve and communicate with the injected services.
 
+#### Kubernetes permissions in Non-Default Dapr namespaces
+
+If your Dapr enabled apps are using components that fetch secrets from non-default namespaces, please follow this guide [here](https://docs.dapr.io/operations/components/component-secrets/#non-default-namespaces)
+
+
 ### Trust Anchors
 
 Trust anchors are essential for verifying the authenticity of the Dapr control plane.

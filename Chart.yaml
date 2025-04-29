@@ -25,7 +25,7 @@ appVersion: "1.16.0"
 dependencies:
 - name: diagrid-dapr-injector
   version: 1.0.0
-  repository: file://../diagrid-dapr-injector
+  repository: oci://public.ecr.aws/diagrid/d3e-charts
   alias: diagrid_dapr_injector
 - name: redis
   version: 20.11.3
