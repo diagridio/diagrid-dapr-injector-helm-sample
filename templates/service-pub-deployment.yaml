@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: service-pong
+  name: service-pub
   namespace: {{.Release.Namespace}}
   labels:
-    app: service-pong
+    app: service-pub
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: service-pong
+      app: service-pub
   template:
     metadata:
       annotations:
-        {{ toYaml .Values.podAnnotationsPong | nindent 8 | trim}}
+        {{ toYaml .Values.podAnnotationsPub | nindent 8 | trim}}
       labels:
-        app: service-pong
-        dapr.io/app-id: service-pong
+        app: service-pub
+        dapr.io/app-id: service-pub
         dapr.io/metrics-enabled: "true"
         dapr.io/sidecar-injected: "true"
     spec:
       containers:
-      - name: service-pong
-        image: nelsonparente00/pong-service-df4b2085e79736a851bbf3d1afa35c95:latest
+      - name: service-pub
+        image: nelsonparente00/pub-fcf22dc88fe149679f05d1e44b8eea63:latest
         imagePullPolicy: Always
         env:
         - name: DAPR_HTTP_PORT
@@ -31,9 +31,9 @@ spec:
           value: "50001"
         - name: APP_PROTOCOL
           value: http
-      {{- include "diagrid.dapr.sidecar" (dict "podAnnotations" .Values.podAnnotationsPong "helmCtx" .) | indent 6 }}
+      {{- include "diagrid.dapr.sidecar" (dict "podAnnotations" .Values.podAnnotationsPub "helmCtx" .) | indent 6 }}
       volumes:
       {{- include "diagrid.dapr.identity-token-volume" . | indent 6 }}
       {{- if .Values.diagrid_dapr_injector.injectDaprResources }}
-      {{- include "diagrid.dapr.resources-volumes" (dict "podAnnotations" .Values.podAnnotationsPong "helmCtx" .) | indent 6 }}
+      {{- include "diagrid.dapr.resources-volumes" (dict "podAnnotations" .Values.podAnnotationsPub "helmCtx" .) | indent 6 }}
       {{- end }}

@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: service-ping
+  name: service-sub
   namespace: {{.Release.Namespace}}
   labels:
-    app: service-ping
+    app: service-sub
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: service-ping
+      app: service-sub
   template:
     metadata:
       annotations:
-        {{ toYaml .Values.podAnnotationsPing | nindent 8 | trim}}
+        {{ toYaml .Values.podAnnotationsSub | nindent 8 | trim}}
       labels:
-        app: service-ping
-        dapr.io/app-id: service-ping
+        app: service-sub
+        dapr.io/app-id: service-sub
         dapr.io/metrics-enabled: "true"
         dapr.io/sidecar-injected: "true"
     spec:
       containers:
-      - name: service-ping
-        image: nelsonparente00/ping-service-c2c4046e34281a484ef2a5764cfd5341:latest
+      - name: service-sub
+        image: nelsonparente00/sub-99ada7c02f01656935ca81349c770d64:latest
         imagePullPolicy: Always
         env:
         - name: DAPR_HTTP_PORT
@@ -31,9 +31,9 @@ spec:
           value: "50001"
         - name: APP_PROTOCOL
           value: http
-      {{- include "diagrid.dapr.sidecar" (dict "podAnnotations" .Values.podAnnotationsPing "helmCtx" .) | indent 6 }}
+      {{- include "diagrid.dapr.sidecar" (dict "podAnnotations" .Values.podAnnotationsSub "helmCtx" .) | indent 6 }}
       volumes:
       {{- include "diagrid.dapr.identity-token-volume" . | indent 6 }}
       {{- if .Values.diagrid_dapr_injector.injectDaprResources }}
-      {{- include "diagrid.dapr.resources-volumes" (dict "podAnnotations" .Values.podAnnotations "helmCtx" .) | indent 6 }}
+      {{- include "diagrid.dapr.resources-volumes" (dict "podAnnotations" .Values.podAnnotationsSub "helmCtx" .) | indent 6 }}
       {{- end }}
