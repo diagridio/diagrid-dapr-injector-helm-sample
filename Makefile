@@ -18,8 +18,8 @@ d3e:
 		--set global.rbac.namespaced=true \
 		--set global.rbac.injector.enabled=false \
 		--set-json 'global.rbac.namespaces=["d3e-sample"]' \
-		--set diagrid.token="THIS_IS_ANYTHING" \
-		--set global.tag=1.15-alpha \
+		--set diagrid.token="TOKEN" \
+		--set global.tag=1.15.5 \
 		--set dapr_operator.enabled=false \
 		--set global.mtls.enabled=true \
 		--set dapr_sidecar_injector.enabled=false \
