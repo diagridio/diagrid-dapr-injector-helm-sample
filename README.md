@@ -38,7 +38,7 @@ In your `values.yaml` file, add any necessary overrides for the injector:
 ```yaml
 dapr:  
   image: 
-    tag: "1.14.5"
+    tag: "1.15.5"
   ha:
     enabled: true
   controlPlaneNamespace: dapr-system
@@ -155,12 +155,40 @@ nameResolution:
 After configuring name resolution, you need to define the necessary services using the following Helm template:
 
 ```yaml
-{{- include "diagrid.dapr.service" (dict "appId" "APP_ID_A" "podAnnotations" .Values.podAnnotationsA "namespace" .Release.Namespace) }}
+{{- include "diagrid.dapr.service" (dict "appId" "APP_ID_A" "podAnnotations" .Values.podAnnotationsPub "namespace" .Release.Namespace) }}
 ---
-{{- include "diagrid.dapr.service" (dict "appId" "APP_ID_B" "podAnnotations" .Values.podAnnotationsB "namespace" .Release.Namespace) }}
+{{- include "diagrid.dapr.service" (dict "appId" "APP_ID_B" "podAnnotations" .Values.podAnnotationsSub "namespace" .Release.Namespace) }}
 ```
 
+
 Replace APP_ID with the appropriate application ID. This ensures that Dapr can correctly resolve and communicate with the injected services.
+
+
+#### Configuring Kubernetes Secret Store
+
+When running Dapr in **Kubernetes mode**, you need to configure a secret store and explicitly reference it in your components. This is required for securely retrieving sensitive values like Redis passwords, API tokens, or connection strings from Kubernetes secrets.
+
+##### 1. Create the Kubernetes Secret Store Component
+
+This component tells Dapr to use Kubernetes as the secret store. Apply the following YAML in your application's namespace:
+
+```yaml
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: kubernetes-secret-store
+  namespace: d3e-sample
+spec:
+  type: secretstores.kubernetes
+  version: v1
+```
+
+In each Dapr component that needs to use secrets, add the auth.secretStore field pointing to the secret store defined above:
+
+```yaml
+auth:
+  secretStore: kubernetes-secret-store
+```
 
 #### Kubernetes permissions in Non-Default Dapr namespaces
 
@@ -203,6 +231,16 @@ Alternatively, you can pass the trust anchors via the Helm install/upgrade `set`
 # also showing passing the image tag, custom control plane namespace, and the trust anchors from a file
 helm template --set dapr.controlPlaneNamespace=dapr-system-3 --set "dapr.image.tag=1.14.4" --set-file dapr.trustAnchors=/tmp/trust-anchors.crt -n dapr-system-3 deploy-sample 
 ```
+
+## D3E Configuration Templates
+
+For complex D3E deployments, this project includes configuration templates in the `d3e-configs/` directory:
+
+- **`minimal-crds.yaml`**: Basic deployment with CRDs and cluster-wide RBAC
+- **`standalone-no-crds.yaml`**: Standalone mode without CRDs (namespaced RBAC only)
+- **`namespaced-with-crds.yaml`**: Hybrid approach with CRDs but namespaced RBAC
+
+These templates help simplify the complex Helm values required for different deployment scenarios. See `d3e-configs/README.md` for detailed usage instructions and configuration comparisons.
 
 ## Support
 

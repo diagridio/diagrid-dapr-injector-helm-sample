@@ -27,9 +27,9 @@ serviceAccount:
 
 dapr:
   image:
-    tag: "1.14.4"
+    tag: "1.15.5"
     pullPolicy: IfNotPresent
-  controlPlaneNamespace: "dapr-system" # default is Release.Namespace (ie dapr-system)
+  controlPlaneNamespace: "d3e-sample" # default is Release.Namespace (ie dapr-system)
 
 podAnnotations: 
   dapr.io/app-id: service-dapr-system-x
@@ -38,16 +38,16 @@ podAnnotations:
   dapr.io/log-as-json: "false"
   dapr.io/log-level: debug
 
-podAnnotationsPing: 
-  dapr.io/app-id: service-ping
+podAnnotationsSub: 
+  dapr.io/app-id: service-sub
   dapr.io/enable-api-logging: "true"
   dapr.io/enabled: "true"
   dapr.io/log-as-json: "false"
   dapr.io/log-level: debug
   dapr.io/app-port: "8080"
 
-podAnnotationsPong: 
-  dapr.io/app-id: service-pong
+podAnnotationsPub: 
+  dapr.io/app-id: service-pub
   dapr.io/enable-api-logging: "true"
   dapr.io/enabled: "true"
   dapr.io/log-as-json: "false"

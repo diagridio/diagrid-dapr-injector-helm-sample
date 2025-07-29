@@ -1,11 +1,13 @@
 apiVersion: dapr.io/v1alpha1
 kind: Component
+metadata:
+  name: pubsub
+  namespace: d3e-sample
 auth:
   secretStore: kubernetes-secret-store
-metadata:
-  name: statestore
-  namespace: d3e-sample
 spec:
+  type: pubsub.redis
+  version: v1
   metadata:
   - name: redisHost
     value: d3e-sample-redis-master.d3e-sample:6379
@@ -13,5 +15,6 @@ spec:
     secretKeyRef:
       name: d3e-sample-redis
       key: redis-password
-  type: state.redis
-  version: v1
+scopes:
+- service-pub
+- service-sub
