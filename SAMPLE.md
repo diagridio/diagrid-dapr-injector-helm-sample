@@ -43,13 +43,22 @@ Install the D3E (Dapr) control plane with specific configurations:
 make d3e
 ```
 
-This command installs D3E with the following key settings:
+This command installs D3E in standalone mode (no CRDs required) with the following key settings:
 - **Namespace**: `d3e-sample`
 - **Mode**: Standalone (no CRDs required)
 - **mTLS**: Enabled for secure communication
-- **RBAC**: Namespaced permissions
+- **RBAC**: Namespaced permissions only
 - **Actors**: Disabled (not needed for this sample)
 - **Scheduler**: Disabled (not needed for this sample)
+
+#### Alternative D3E Configurations
+
+The project includes several D3E configuration templates in the `d3e-configs/` directory:
+
+- **`make d3e-standalone`** (default): Namespaced RBAC, no CRDs
+- **`make d3e-minimal`**: Cluster-wide RBAC with CRDs - for development/production with full permissions
+
+See `d3e-configs/README.md` for detailed configuration comparisons and usage guidelines.
 
 ### 3. Deploy the Sample Application
 

@@ -19,6 +19,8 @@ spec:
         dapr.io/app-id: service-sub
         dapr.io/metrics-enabled: "true"
         dapr.io/sidecar-injected: "true"
+        dapr.io/log-level: "debug"
+        dapr.io/config: "config"
     spec:
       containers:
       - name: service-sub

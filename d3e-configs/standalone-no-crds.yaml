@@ -1,0 +1,49 @@
+# Standalone D3E Configuration without CRDs
+# This configuration uses namespaced RBAC and standalone mode
+# No cluster-wide permissions required - perfect for restricted environments
+# This is the configuration currently used in the Makefile
+
+# Global settings
+global:
+  tag: "1.15.5"
+  mtls:
+    enabled: true
+  actors:
+    enabled: false
+  scheduler:
+    enabled: false
+  rbac:
+    namespaced: true  # Use namespaced RBAC only
+    injector:
+      enabled: false  # Disable injector since we're using standalone mode
+    createTokenReviewerRole: false
+    createTokenReviewerRoleBinding: false
+    namespaces: ["d3e-sample"]  # Restrict to specific namespace
+
+# D3E token (replace with your actual token)
+diagrid:
+  token: "YOUR_D3E_TOKEN_HERE"
+
+# Dapr control plane components
+dapr_operator:
+  enabled: false  # No operator in standalone mode
+
+dapr_sidecar_injector:
+  enabled: false  # No sidecar injector in standalone mode
+
+dapr_placement:
+  mode: "standalone"  # Use standalone mode without CRDs
+
+dapr_scheduler:
+  mode: "standalone"  # Use standalone mode without CRDs
+
+dapr_sentry:
+  mode: "standalone"  # Use standalone mode without CRDs
+  injectDaprSystemConfig: true
+
+# Dapr configuration
+dapr_config:
+  dapr_config_chart_included: false  # Don't include default Dapr config
+
+# Namespace configuration
+namespace: "d3e-sample" 

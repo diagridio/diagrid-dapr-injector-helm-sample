@@ -1,0 +1,52 @@
+# Namespaced D3E Configuration with CRDs
+# This configuration uses namespaced RBAC but still uses CRDs
+# This is a hybrid approach - CRDs are cluster-scoped but RBAC is namespaced
+# Note: This may not work in all environments due to CRD cluster-scoping
+
+# Global settings
+global:
+  tag: "1.15.5"
+  mtls:
+    enabled: true
+  actors:
+    enabled: false
+  scheduler:
+    enabled: false
+  rbac:
+    namespaced: true  # Use namespaced RBAC
+    injector:
+      enabled: true  # Enable injector for CRD-based deployments
+    createTokenReviewerRole: false
+    createTokenReviewerRoleBinding: false
+    namespaces: ["d3e-sample"]  # Restrict to specific namespace
+
+# D3E token (replace with your actual token)
+diagrid:
+  token: "YOUR_D3E_TOKEN_HERE"
+
+# Dapr control plane components
+dapr_operator:
+  enabled: true  # Enable operator for CRD management
+
+dapr_sidecar_injector:
+  enabled: true  # Enable sidecar injector
+
+dapr_placement:
+  mode: "kubernetes"  # Use Kubernetes mode with CRDs
+
+dapr_scheduler:
+  mode: "kubernetes"  # Use Kubernetes mode with CRDs
+
+dapr_sentry:
+  mode: "kubernetes"  # Use Kubernetes mode with CRDs
+  injectDaprSystemConfig: true
+
+# Dapr configuration
+dapr_config:
+  dapr_config_chart_included: true  # Include default Dapr config
+
+# Namespace configuration
+namespace: "d3e-sample"
+
+# Note: This configuration may require cluster-admin privileges to create CRDs
+# even though RBAC is namespaced, as CRDs are cluster-scoped resources 

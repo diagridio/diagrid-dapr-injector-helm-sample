@@ -10,28 +10,21 @@ sample:
 		-n d3e-sample \
 		d3e-sample .
 
-d3e:
+d3e: d3e-standalone
+
+d3e-minimal:
+	helm install \
+		--create-namespace \
+		-n d3e-sample \
+		-f d3e-configs/minimal-crds.yaml \
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.5
+
+d3e-standalone:
 	helm install \
 		--skip-crds \
 		--create-namespace \
 		-n d3e-sample \
-		--set global.rbac.namespaced=true \
-		--set global.rbac.injector.enabled=false \
-		--set-json 'global.rbac.namespaces=["d3e-sample"]' \
-		--set diagrid.token="TOKEN" \
-		--set global.tag=1.15.5 \
-		--set dapr_operator.enabled=false \
-		--set global.mtls.enabled=true \
-		--set dapr_sidecar_injector.enabled=false \
-		--set dapr_placement.mode=standalone \
-		--set dapr_scheduler.mode=standalone \
-		--set dapr_sentry.mode=standalone \
-		--set global.actors.enabled=false \
-		--set global.scheduler.enabled=false \
-		--set dapr_sentry.injectDaprSystemConfig=true \
-		--set dapr_config.dapr_config_chart_included=false \
-		--set global.rbac.createTokenReviewerRole=false \
-		--set global.rbac.createTokenReviewerRoleBinding=false \
+		-f d3e-configs/standalone-no-crds.yaml \
 		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.5
 
 uninstall:

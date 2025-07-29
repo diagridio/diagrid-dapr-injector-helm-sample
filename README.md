@@ -232,6 +232,16 @@ Alternatively, you can pass the trust anchors via the Helm install/upgrade `set`
 helm template --set dapr.controlPlaneNamespace=dapr-system-3 --set "dapr.image.tag=1.14.4" --set-file dapr.trustAnchors=/tmp/trust-anchors.crt -n dapr-system-3 deploy-sample 
 ```
 
+## D3E Configuration Templates
+
+For complex D3E deployments, this project includes configuration templates in the `d3e-configs/` directory:
+
+- **`minimal-crds.yaml`**: Basic deployment with CRDs and cluster-wide RBAC
+- **`standalone-no-crds.yaml`**: Standalone mode without CRDs (namespaced RBAC only)
+- **`namespaced-with-crds.yaml`**: Hybrid approach with CRDs but namespaced RBAC
+
+These templates help simplify the complex Helm values required for different deployment scenarios. See `d3e-configs/README.md` for detailed usage instructions and configuration comparisons.
+
 ## Support
 
 For issues, feature requests, or questions, please file an issue in the [GitHub repository](https://github.com/diagridio/diagrid-dapr-injector).
