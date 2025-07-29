@@ -304,7 +304,8 @@ To extend this sample, consider:
 
 ## Additional Resources
 
-- [D3E Documentation](https://docs.diagrid.io/)
+### Documentation
+- [D3E Official Documentation](https://docs.diagrid.io/enterprise-dapr/d3e/)
 - [Dapr Go SDK](https://github.com/dapr/go-sdk)
 - [Dapr Components](https://docs.dapr.io/concepts/components-concept/)
 - [Helm Charts](https://helm.sh/docs/)
