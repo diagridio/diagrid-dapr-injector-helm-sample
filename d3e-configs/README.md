@@ -4,7 +4,7 @@ This directory contains template values files for different D3E deployment confi
 
 ## Available Configurations
 
-### 1. `minimal-crds.yaml` - Basic Deployment with CRDs
+### 1. `minimal-with-crds.yaml` - Basic Deployment with CRDs
 **Use case**: Development, testing, and production environments where you have cluster-admin privileges.
 
 **Features**:
@@ -23,7 +23,7 @@ helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
   --version 1.15.5 \
   --create-namespace \
   -n d3e-sample \
-  -f d3e-configs/minimal-crds.yaml
+  -f d3e-configs/minimal-with-crds.yaml
 ```
 
 ### 2. `standalone-no-crds.yaml` - Standalone Mode without CRDs
@@ -48,10 +48,31 @@ helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
   -f d3e-configs/standalone-no-crds.yaml
 ```
 
+### 3. `d3e-with-crds-no-cluster-roles.yaml` - Hybrid Approach
+**Use case**: When you want CRDs but have limited cluster permissions (experimental).
+
+**Features**:
+- ⚠️ Namespaced RBAC but still uses CRDs
+- ⚠️ CRDs are cluster-scoped but RBAC is namespaced
+- ⚠️ May require cluster-admin privileges for CRD creation
+
+**Requirements**:
+- May still need cluster-admin privileges for CRD creation
+- Experimental configuration
+
+**Command**:
+```bash
+helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
+  --version 1.15.5 \
+  --create-namespace \
+  -n d3e-sample \
+  -f d3e-configs/d3e-with-crds-no-cluster-roles.yaml
+```
+
 ## Configuration Comparison
 
-| Feature | minimal-crds | standalone-no-crds | namespaced-with-crds |
-|---------|--------------|-------------------|---------------------|
+| Feature | minimal-with-crds | standalone-no-crds | d3e-with-crds-no-cluster-roles |
+|---------|------------------|-------------------|--------------------------------|
 | Cluster RBAC | ✅ | ❌ | ❌ |
 | CRDs | ✅ | ❌ | ✅ |
 | Cluster Permissions | Required | Not Required | May be Required |
@@ -79,7 +100,7 @@ d3e-minimal:
 	helm install \
 		--create-namespace \
 		-n d3e-sample \
-		-f d3e-configs/minimal-crds.yaml \
+		-f d3e-configs/minimal-with-crds.yaml \
 		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.5
 
 d3e-standalone:
@@ -87,6 +108,13 @@ d3e-standalone:
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/standalone-no-crds.yaml \
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.5
+
+d3e-hybrid:
+	helm install \
+		--create-namespace \
+		-n d3e-sample \
+		-f d3e-configs/d3e-with-crds-no-cluster-roles.yaml \
 		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.5
 ```
 
@@ -104,6 +132,19 @@ d3e-standalone:
 - **Standalone**: Components run independently, no operator required
 - **Kubernetes**: Components managed by Dapr operator, full integration with K8s
 
+## Sample Application Configurations
+
+The project also includes sample application configurations in `sample-configs/` that work with the D3E configurations:
+
+- **`sample-configs/minimal.yaml`**: Sample app config for minimal D3E deployment
+- **`sample-configs/standalone-no-crds.yaml`**: Sample app config for standalone D3E
+- **`sample-configs/d3e-with-crds-no-cluster-roles.yaml`**: Sample app config for hybrid D3E
+
+These are used by the Makefile commands:
+- `make sample-minimal`
+- `make sample-standalone-no-crds` (default)
+- `make sample-with-crds-no-cluster-roles`
+
 ## Troubleshooting
 
 ### Common Issues
@@ -112,7 +153,7 @@ d3e-standalone:
    - Solution: Use `standalone-no-crds.yaml`
 
 2. **RBAC Permission Denied**: Namespaced configuration doesn't have enough permissions
-   - Solution: Use `minimal-crds.yaml` or contact cluster admin
+   - Solution: Use `minimal-with-crds.yaml` or contact cluster admin
 
 3. **Components Not Starting**: Check if the configuration matches your environment
    - Solution: Verify token and namespace settings

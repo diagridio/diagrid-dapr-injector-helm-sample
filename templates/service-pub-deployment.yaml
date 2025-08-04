@@ -18,7 +18,7 @@ spec:
         app: service-pub
         dapr.io/app-id: service-pub
         dapr.io/metrics-enabled: "true"
-        dapr.io/sidecar-injected: "true"
+        dapr.io/sidecar-injected: "{{ .Values.diagrid_dapr_injector.enabled | toString }}"
         dapr.io/log-level: "debug"
         dapr.io/config: "config"
     spec:
@@ -33,7 +33,9 @@ spec:
           value: "50001"
         - name: APP_PROTOCOL
           value: http
+      {{- if .Values.diagrid_dapr_injector.enabled }}
       {{- include "diagrid.dapr.sidecar" (dict "podAnnotations" .Values.podAnnotationsPub "helmCtx" .) | indent 6 }}
+      {{- end }}
       volumes:
       {{- include "diagrid.dapr.identity-token-volume" . | indent 6 }}
       {{- if .Values.diagrid_dapr_injector.injectDaprResources }}

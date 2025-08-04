@@ -1,0 +1,140 @@
+name: Global CI
+
+on:
+  workflow_dispatch:
+  push:
+    branches: 
+    - main
+  pull_request:
+
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install kind
+        run: |
+            curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+            chmod +x ./kind
+            sudo mv ./kind /usr/local/bin/kind
+      - name: Install Helm
+        run: |
+            curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
+  standalone-no-crds:
+    needs: dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Make Infra
+        run: |
+          make infra
+      - name: Make d3e Standalone
+        run: |
+          make d3e-standalone
+      - name: Make Sample
+        run: |
+          make sample
+      - name: Wait for 1 minute to let the sample app start
+        run: |
+          sleep 60
+      - name: Check pods are ready
+        run: |
+          kubectl wait --for=condition=Ready pods --all --namespace=d3e-sample --timeout=500s
+      - name: Ensure no CRDs exist
+        run: |
+          if kubectl get crds -o name | grep -q .; then
+            echo "CRDs found:"
+            kubectl get crds
+            exit 1
+          else
+            echo "✅ No CRDs found"
+          fi
+      - name: Ensure no ClusterRoles with 'dapr' in the name exist
+        run: |
+          if kubectl get clusterroles -o name | grep -q dapr; then
+            echo "❌ Dapr ClusterRoles found:"
+            kubectl get clusterroles | grep dapr
+            exit 1
+          else
+            echo "✅ No Dapr ClusterRoles found"
+          fi
+      - name: Show all pods
+        if: always()
+        run: |
+          kubectl get pods --all-namespaces
+      - name: Nuke resources 
+        if: always()
+        run: |
+          make nuke
+
+  d3e-with-crds-no-cluster-roles:
+    needs: dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Make Infra
+        run: |
+          make infra
+      - name: Make d3e with CRDs and no cluster roles
+        run: |
+          make d3e-with-crds-no-cluster-roles
+      - name: Make Sample with CRDs and no cluster roles
+        run: |
+          make sample-with-crds-no-cluster-roles
+      - name: Wait for 1 minute to let the sample app start
+        run: |
+          sleep 60
+      - name: Check pods are ready
+        run: |
+          kubectl wait --for=condition=Ready pods --all --namespace=d3e-sample --timeout=500s
+      - name: Ensure no ClusterRoles with 'dapr' in the name exist
+        run: |
+          if kubectl get clusterroles -o name | grep -q dapr; then
+            echo "❌ Dapr ClusterRoles found:"
+            kubectl get clusterroles | grep dapr
+            exit 1
+          else
+            echo "✅ No Dapr ClusterRoles found"
+          fi
+      - name: Show all pods
+        if: always()
+        run: |
+          kubectl get pods --all-namespaces
+      - name: Nuke resources 
+        if: always()
+        run: |
+          make nuke
+
+  minimal:
+    needs: dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Make Infra
+        run: |
+          make infra
+      - name: Make d3e Minimal
+        run: |
+          make d3e-minimal
+      - name: Make Sample Minimal
+        run: |
+          make sample-minimal
+      - name: Wait for 1 minute to let the sample app start
+        run: |
+          sleep 60
+      - name: Check pods are ready
+        run: |
+          kubectl wait --for=condition=Ready pods --all --namespace=d3e-sample --timeout=500s
+      - name: Show all pods
+        if: always()
+        run: |
+          kubectl get pods --all-namespaces
+      - name: Nuke resources 
+        if: always()
+        run: |
+          make nuke

@@ -1,7 +1,7 @@
-# Standalone D3E Configuration without CRDs
-# This configuration uses namespaced RBAC and standalone mode
-# No cluster-wide permissions required - perfect for restricted environments
-# This is the configuration currently used in the Makefile
+# Namespaced D3E Configuration with CRDs
+# This configuration uses namespaced RBAC but still uses CRDs
+# This is a hybrid approach - CRDs are cluster-scoped but RBAC is namespaced
+# Note: This may not work in all environments due to CRD cluster-scoping
 
 global:
   tag: "1.15.5"
@@ -12,7 +12,7 @@ global:
   scheduler:
     enabled: false
   rbac:
-    namespaced: true 
+    namespaced: true
     namespaces: ["d3e-sample"]
     injector:
       enabled: false
@@ -30,16 +30,16 @@ dapr_sidecar_injector:
   enabled: false
 
 dapr_placement:
-  mode: "standalone"
+  mode: "kubernetes"
 
 dapr_scheduler:
-  mode: "standalone"
+  mode: "kubernetes"
 
 dapr_sentry:
   mode: "standalone"
   injectDaprSystemConfig: true
 
 dapr_config:
-  dapr_config_chart_included: false
+  dapr_config_chart_included: true 
 
-namespace: "d3e-sample" 
+namespace: "d3e-sample"

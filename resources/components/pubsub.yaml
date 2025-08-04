@@ -10,10 +10,10 @@ spec:
   version: v1
   metadata:
   - name: redisHost
-    value: d3e-sample-redis-master.d3e-sample:6379
+    value: redis-master.d3e-sample:6379
   - name: redisPassword
     secretKeyRef:
-      name: d3e-sample-redis
+      name: redis
       key: redis-password
 scopes:
 - service-pub
