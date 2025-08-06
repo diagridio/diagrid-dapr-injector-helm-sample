@@ -137,7 +137,7 @@ d3e-hybrid:
 The project also includes sample application configurations in `sample-configs/` that work with the D3E configurations:
 
 - **`sample-configs/minimal.yaml`**: Sample app config for minimal D3E deployment
-- **`sample-configs/standalone-no-crds.yaml`**: Sample app config for standalone D3E
+- **`sample-configs/standalone-no-crds.yaml`**: Sample app config for standalone D3E (no cluster roles and no CRDs)
 - **`sample-configs/d3e-with-crds-no-cluster-roles.yaml`**: Sample app config for hybrid D3E
 
 These are used by the Makefile commands:
