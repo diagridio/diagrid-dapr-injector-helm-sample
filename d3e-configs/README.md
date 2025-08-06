@@ -75,7 +75,7 @@ helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
 |---------|------------------|-------------------|--------------------------------|
 | Cluster Roles | ✅ | ❌ | ❌ |
 | CRDs | ✅ | ❌ | ✅ |
-| Cluster Permissions | Required | Not Required | May be Required |
+| Cluster Permissions | Required | Not Required | Required to install CRDs only|
 | Dapr Operator | ✅ | ❌ | ✅ |
 | Sidecar Injector | ✅ | ❌ | ✅ |
 | Standalone Mode | ❌ | ✅ | ❌ |
