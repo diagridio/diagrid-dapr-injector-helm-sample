@@ -73,7 +73,7 @@ helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
 
 | Feature | minimal-with-crds | standalone-no-crds | d3e-with-crds-no-cluster-roles |
 |---------|------------------|-------------------|--------------------------------|
-| Cluster RBAC | ✅ | ❌ | ❌ |
+| Cluster Roles | ✅ | ❌ | ❌ |
 | CRDs | ✅ | ❌ | ✅ |
 | Cluster Permissions | Required | Not Required | May be Required |
 | Dapr Operator | ✅ | ❌ | ✅ |
