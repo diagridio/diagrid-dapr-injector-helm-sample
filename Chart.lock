@@ -2,8 +2,5 @@ dependencies:
 - name: diagrid-dapr-injector
   repository: oci://public.ecr.aws/diagrid/d3e-charts
   version: 1.0.0
-- name: redis
-  repository: https://charts.bitnami.com/bitnami
-  version: 20.11.3
-digest: sha256:f2978fe6f403e45026c2d32b20556afb440762451cf048fab5d5dade85f80a86
-generated: "2025-07-22T11:29:55.451665+01:00"
+digest: sha256:ff563c8b2dc48c3438211cd308e2fac0c249cd346dd7df312acbd1203f8d1f75
+generated: "2025-08-04T13:31:12.64209+01:00"

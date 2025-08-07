@@ -236,9 +236,9 @@ helm template --set dapr.controlPlaneNamespace=dapr-system-3 --set "dapr.image.t
 
 For complex D3E deployments, this project includes configuration templates in the `d3e-configs/` directory:
 
-- **`minimal-crds.yaml`**: Basic deployment with CRDs and cluster-wide RBAC
+- **`minimal-with-crds.yaml`**: Basic deployment with CRDs and cluster-wide RBAC
 - **`standalone-no-crds.yaml`**: Standalone mode without CRDs (namespaced RBAC only)
-- **`namespaced-with-crds.yaml`**: Hybrid approach with CRDs but namespaced RBAC
+- **`d3e-with-crds-no-cluster-roles.yaml`**: Hybrid approach with CRDs but namespaced RBAC
 
 These templates help simplify the complex Helm values required for different deployment scenarios. See `d3e-configs/README.md` for detailed usage instructions and configuration comparisons.
 

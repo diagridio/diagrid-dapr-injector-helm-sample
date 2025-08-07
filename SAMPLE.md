@@ -55,8 +55,9 @@ This command installs D3E in standalone mode (no CRDs required) with the followi
 
 The project includes several D3E configuration templates in the `d3e-configs/` directory:
 
-- **`make d3e-standalone`** (default): Namespaced RBAC, no CRDs
+- **`make d3e-standalone`** (default): Namespaced RBAC, no CRDs - perfect for restricted environments
 - **`make d3e-minimal`**: Cluster-wide RBAC with CRDs - for development/production with full permissions
+- **`make d3e-with-crds-no-cluster-roles`**: Hybrid approach with CRDs but namespaced RBAC
 
 See `d3e-configs/README.md` for detailed configuration comparisons and usage guidelines.
 
