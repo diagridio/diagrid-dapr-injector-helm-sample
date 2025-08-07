@@ -46,7 +46,7 @@ d3e-standalone-sentry-automount-disabled:
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/standalone-no-crds-automount-sentry-disabled.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version v1.15.6-d3e.1
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
 
 # D3E minimal uses CRDs and minimal cluster roles
 d3e-minimal:
