@@ -22,7 +22,7 @@ jobs:
             check_crds: true
             check_cluster_roles: true
 
-          - name: Standalone - Sentry Disabled
+          - name: Standalone -  No CRDs & Sentry Automount Disabled
             d3e_target: d3e-standalone-sentry-automount-disabled
             sample_target: sample
             check_crds: true
