@@ -70,6 +70,54 @@ jobs:
         run: |
           make nuke
 
+  standalone-no-crds-automount-sentry-disabled:
+    needs: dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Make Infra
+        run: |
+          make infra
+      - name: Make d3e standalone with Sentry automount disabled
+        run: |
+          make d3e-standalone-sentry-automount-disabled
+      - name: Make Sample
+        run: |
+          make sample
+      - name: Wait for 1 minute to let the sample app start
+        run: |
+          sleep 60
+      - name: Check pods are ready
+        run: |
+          kubectl wait --for=condition=Ready pods --all --namespace=d3e-sample --timeout=500s
+      - name: Ensure no CRDs exist
+        run: |
+          if kubectl get crds -o name | grep -q .; then
+            echo "CRDs found:"
+            kubectl get crds
+            exit 1
+          else
+            echo "✅ No CRDs found"
+          fi
+      - name: Ensure no ClusterRoles with 'dapr' in the name exist
+        run: |
+          if kubectl get clusterroles -o name | grep -q dapr; then
+            echo "❌ Dapr ClusterRoles found:"
+            kubectl get clusterroles | grep dapr
+            exit 1
+          else
+            echo "✅ No Dapr ClusterRoles found"
+          fi
+      - name: Show all pods
+        if: always()
+        run: |
+          kubectl get pods --all-namespaces
+      - name: Nuke resources 
+        if: always()
+        run: |
+          make nuke
+
   d3e-with-crds-no-cluster-roles:
     needs: dependencies
     runs-on: ubuntu-latest
