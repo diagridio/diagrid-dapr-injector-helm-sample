@@ -29,12 +29,6 @@ dapr_operator:
 dapr_sidecar_injector:
   enabled: false
 
-dapr_placement:
-  mode: "standalone"
-
-dapr_scheduler:
-  mode: "standalone"
-
 dapr_sentry:
   mode: "standalone"
   injectDaprSystemConfig: true
