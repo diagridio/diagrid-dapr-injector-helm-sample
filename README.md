@@ -38,7 +38,7 @@ In your `values.yaml` file, add any necessary overrides for the injector:
 ```yaml
 dapr:  
   image: 
-    tag: "1.15.5"
+    tag: "1.15.6"
   ha:
     enabled: true
   controlPlaneNamespace: dapr-system
