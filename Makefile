@@ -39,6 +39,15 @@ d3e-standalone:
 		-f d3e-configs/standalone-no-crds.yaml \
 		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.5
 
+# This is the standalone d3e deployment with Sentry automountServiceAccountToken disabled.
+d3e-standalone-sentry-automount-disabled:
+	helm install \
+		--skip-crds \
+		--create-namespace \
+		-n d3e-sample \
+		-f d3e-configs/standalone-no-crds-automount-sentry-disabled.yaml \
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.5
+
 # D3E minimal uses CRDs and minimal cluster roles
 d3e-minimal:
 	helm install \
