@@ -229,15 +229,47 @@ Alternatively, you can pass the trust anchors via the Helm install/upgrade `set`
 
 ```bash
 # also showing passing the image tag, custom control plane namespace, and the trust anchors from a file
-helm template --set dapr.controlPlaneNamespace=dapr-system-3 --set "dapr.image.tag=1.14.4" --set-file dapr.trustAnchors=/tmp/trust-anchors.crt -n dapr-system-3 deploy-sample 
+helm template --set dapr.controlPlaneNamespace=dapr-system-3 --set "dapr.image.tag=1.15.6-d3e.1" --set-file dapr.trustAnchors=/tmp/trust-anchors.crt -n dapr-system-3 deploy-sample 
 ```
 
-## D3E Configuration Templates
+### New Feature: Configurable Sentry Service Account Token Automount
+
+D3E versions `1.14.5-d3e.1` and `1.15.6-d3e.1` introduce a new feature for managing service account tokens in the Dapr Sentry component:
+- **`global.rbac.sentry.serviceAccount.automount`**: Controls whether the service account token is automatically mounted.
+- **`global.rbac.sentry.serviceAccount.create`**: Determines whether a service account is created (replaces the deprecated `createServiceAccount` field).
+
+#### Behavior When Automount Is Disabled
+When `global.rbac.sentry.serviceAccount.automount` is set to `false`:
+- A Kubernetes ServiceAccount (KSA) is created with `automountServiceAccountToken=false`.
+- A corresponding secret is created with the default name `dapr-sentry-token`.
+- You can override the service account name using `global.rbac.sentry.serviceAccount.name`.
+
+To enable Kubernetes API access for Sentry, include the following volume mounts in your `values.yaml`:
+
+```yaml
+extraVolumeMounts:
+  sentry:
+    - name: kube-api-access
+      mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+      readOnly: true
+extraVolumes:
+  sentry:
+    - name: kube-api-access
+      secret:
+        secretName: dapr-sentry-token
+```
+
+#### Example Configuration
+An example configuration for a standalone D3E deployment with automount disabled is available at:
+- [d3e-configs/standalone-no-crds-automount-sentry-disabled.yaml](https://github.com/diagridio/diagrid-dapr-injector-helm-sample/blob/main/d3e-configs/standalone-no-crds-automount-sentry-disabled.yaml)
+
+### D3E Configuration Templates
 
 For complex D3E deployments, this project includes configuration templates in the `d3e-configs/` directory:
 
 - **`minimal-with-crds.yaml`**: Basic deployment with CRDs and cluster-wide RBAC
 - **`standalone-no-crds.yaml`**: Standalone mode without CRDs (namespaced RBAC only)
+- **`standalone-no-crds-automount-sentry-disabled.yaml`**: Standalone mode without CRDs and with Sentry automount disabled
 - **`d3e-with-crds-no-cluster-roles.yaml`**: Hybrid approach with CRDs but namespaced RBAC
 
 These templates help simplify the complex Helm values required for different deployment scenarios. See `d3e-configs/README.md` for detailed usage instructions and configuration comparisons.
