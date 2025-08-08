@@ -64,7 +64,7 @@ helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
   -f d3e-configs/standalone-no-crds.yaml
 ```
 
-### 3. `d3e-with-crds-no-cluster-roles.yaml` - Hybrid Approach
+### 4. `d3e-with-crds-no-cluster-roles.yaml` - Hybrid Approach
 **Use case**: When you want CRDs but have limited cluster permissions (experimental).
 
 **Features**:
