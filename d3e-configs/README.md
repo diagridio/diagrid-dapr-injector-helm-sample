@@ -20,13 +20,29 @@ This directory contains template values files for different D3E deployment confi
 **Command**:
 ```bash
 helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
-  --version 1.15.5 \
+  --version 1.15.6-d3e.1 \
   --create-namespace \
   -n d3e-sample \
   -f d3e-configs/minimal-with-crds.yaml
 ```
+### 2. `d3e-standalone-no-crds-automount-sentry-disabled.yaml` - Standalone Mode with Secure Sentry
+Use case: Highly restricted environments where you need to explicitly control the ServiceAccount token lifecycle for the Sentry component.
 
-### 2. `standalone-no-crds.yaml` - Standalone Mode without CRDs
+Features:
+
+- ✅ Namespaced RBAC only
+- ✅ No CRDs required
+- ✅ Standalone mode for all components
+- ✅ Secure Sentry with disabled ServiceAccount token automount
+- ✅ Ideal for production or multi-tenant environments requiring explicit security controls.
+
+**Requirements**:
+- Namespace-level permissions only
+- No cluster-admin privileges needed
+- Dapr sentry api access credentials have to be manually mounted.
+
+
+### 3. `standalone-no-crds.yaml` - Standalone Mode without CRDs
 **Use case**: Restricted environments, multi-tenant clusters, or when you don't have cluster-admin privileges.
 
 **Features**:
@@ -42,7 +58,7 @@ helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
 **Command**:
 ```bash
 helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
-  --version 1.15.5 \
+  --version 1.15.6-d3e.1 \
   --create-namespace \
   -n d3e-sample \
   -f d3e-configs/standalone-no-crds.yaml
@@ -63,7 +79,7 @@ helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
 **Command**:
 ```bash
 helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
-  --version 1.15.5 \
+  --version 1.15.6-d3e.1 \
   --create-namespace \
   -n d3e-sample \
   -f d3e-configs/d3e-with-crds-no-cluster-roles.yaml
@@ -71,15 +87,17 @@ helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
 
 ## Configuration Comparison
 
-| Feature | minimal-with-crds | standalone-no-crds | d3e-with-crds-no-cluster-roles |
-|---------|------------------|-------------------|--------------------------------|
-| Cluster Roles | ✅ | ❌ | ❌ |
-| CRDs | ✅ | ❌ | ✅ |
-| Cluster Permissions | Required | Not Required | Required to install CRDs only|
-| Dapr Operator | ✅ | ❌ | ✅ |
-| Sidecar Injector | ✅ | ❌ | ✅ |
-| Standalone Mode | ❌ | ✅ | ❌ |
-| Multi-tenant Safe | ❌ | ✅ | ⚠️ |
+| Feature                   | minimal-with-crds | standalone-no-crds | standalone-no-crds-automount-disabled | d3e-with-crds-no-cluster-roles |
+|---------------------------|-------------------|--------------------|---------------------------------------|--------------------------------|
+| Cluster Roles             | ✅                 | ❌                  | ❌                                     | ❌                              |
+| CRDs                      | ✅                 | ❌                  | ❌                                     | ✅                              |
+| Cluster Permissions       | Required          | Not Required       | Not Required                          | Required to install CRDs only  |
+| Dapr Operator             | ✅                 | ❌                  | ❌                                     | ✅                              |
+| Sidecar Injector          | ✅                 | ❌                  | ❌                                     | ✅                              |
+| Standalone Mode           | ❌                 | ✅                  | ✅                                     | ❌                              |
+| Multi-tenant Safe         | ❌                 | ✅                  | ✅                                     | ⚠️                             |
+| Sentry Automount Disabled | ❌                 | ❌                  | ✅                                     | ❌                              |
+
 
 ## Usage Instructions
 
@@ -101,21 +119,28 @@ d3e-minimal:
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/minimal-with-crds.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.5
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
 
 d3e-standalone:
 	helm install \
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/standalone-no-crds.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.5
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
+
+d3e-standalone-sentry-automount-disabled:
+	helm install \
+		--create-namespace \
+		-n d3e-sample \
+		-f d3e-configs/standalone-no-crds-automount-sentry-disabled \
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
 
 d3e-hybrid:
 	helm install \
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/d3e-with-crds-no-cluster-roles.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.5
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
 ```
 
 ## Key Differences Explained

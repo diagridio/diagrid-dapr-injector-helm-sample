@@ -1,4 +1,4 @@
-# Standalone D3E Configuration without CRDs
+# Standalone D3E Configuration without CRDs and with Sentry Automount Disabled
 # This configuration uses namespaced RBAC and standalone mode
 # No cluster-wide permissions required - perfect for restricted environments
 # This is the configuration currently used in the Makefile
@@ -16,8 +16,28 @@ global:
     namespaces: ["d3e-sample"]
     injector:
       enabled: false
+    operator:
+      enabled: false
+    crds:
+      enabled: false
     createTokenReviewerRole: false
     createTokenReviewerRoleBinding: false
+    sentry:
+      serviceAccount: 
+        create: true
+        automount: false
+
+# These mounts are required when service account automount is disabled for sentry to access the Kubernetes API
+  extraVolumeMounts:
+    sentry:
+      - name: kube-api-access
+        mountPath: /var/run/secrets/kubernetes.io/serviceaccount
+        readOnly: true
+  extraVolumes:
+    sentry:
+      - name: kube-api-access
+        secret:
+          secretName: dapr-sentry-token
 
 # D3E token (replace with your actual token)
 diagrid:
@@ -32,6 +52,11 @@ dapr_sidecar_injector:
 dapr_sentry:
   mode: "standalone"
   injectDaprSystemConfig: true
+#  extraEnvVars:
+#    - name: KUBERNETES_SERVICE_HOST
+#      value: kubernetes.default.svc.cluster.local
+#    - name: KUBERNETES_SERVICE_PORT
+#      value: "443"
 
 dapr_config:
   dapr_config_chart_included: false

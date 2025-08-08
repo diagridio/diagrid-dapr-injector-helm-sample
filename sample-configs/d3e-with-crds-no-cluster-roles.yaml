@@ -15,7 +15,7 @@ serviceAccount:
 
 dapr:
   image:
-    tag: "1.15.5"
+    tag: "1.15.6-d3e.1"
     pullPolicy: IfNotPresent
   controlPlaneNamespace: "d3e-sample" # default is Release.Namespace (ie dapr-system)
 

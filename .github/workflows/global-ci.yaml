@@ -8,42 +8,69 @@ on:
   pull_request:
 
 jobs:
-  dependencies:
+  test:
+    name: ${{ matrix.name }}
     runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install kind
-        run: |
-            curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
-            chmod +x ./kind
-            sudo mv ./kind /usr/local/bin/kind
-      - name: Install Helm
-        run: |
-            curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Standalone - No CRDs
+            d3e_target: d3e-standalone
+            sample_target: sample
+            check_crds: true
+            check_cluster_roles: true
 
-  standalone-no-crds:
-    needs: dependencies
-    runs-on: ubuntu-latest
+          - name: Standalone -  No CRDs & Sentry Automount Disabled
+            d3e_target: d3e-standalone-sentry-automount-disabled
+            sample_target: sample
+            check_crds: true
+            check_cluster_roles: true
+
+          - name: With CRDs - No ClusterRoles
+            d3e_target: d3e-with-crds-no-cluster-roles
+            sample_target: sample-with-crds-no-cluster-roles
+            check_crds: false
+            check_cluster_roles: true
+            
+          - name: Minimal
+            d3e_target: d3e-minimal
+            sample_target: sample-minimal
+            check_crds: false
+            check_cluster_roles: false
+
     steps:
-      - name: Checkout code
+      - name:  checkout code
         uses: actions/checkout@v4
+
+      - name: Install Dependencies (kind & Helm)
+        run: |
+          echo "Installing kind..."
+          curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.23.0/kind-linux-amd64
+          chmod +x ./kind
+          sudo mv ./kind /usr/local/bin/kind
+          echo "Installing Helm..."
+          curl -fsSL https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+
       - name: Make Infra
-        run: |
-          make infra
-      - name: Make d3e Standalone
-        run: |
-          make d3e-standalone
-      - name: Make Sample
-        run: |
-          make sample
-      - name: Wait for 1 minute to let the sample app start
-        run: |
-          sleep 60
+        run: make infra
+
+      - name: Deploy Application
+        run: make ${{ matrix.d3e_target }}
+
+      - name: Deploy Sample
+        run: make ${{ matrix.sample_target }}
+
+      - name: Wait for sample app to start
+        run: sleep 60
+
       - name: Check pods are ready
         run: |
           kubectl wait --for=condition=Ready pods --all --namespace=d3e-sample --timeout=500s
+
       - name: Ensure no CRDs exist
+        if: matrix.check_crds
         run: |
           if kubectl get crds -o name | grep -q .; then
             echo "CRDs found:"
@@ -52,7 +79,9 @@ jobs:
           else
             echo "✅ No CRDs found"
           fi
-      - name: Ensure no ClusterRoles with 'dapr' in the name exist
+
+      - name: Ensure no Dapr ClusterRoles exist
+        if: matrix.check_cluster_roles
         run: |
           if kubectl get clusterroles -o name | grep -q dapr; then
             echo "❌ Dapr ClusterRoles found:"
@@ -63,78 +92,7 @@ jobs:
           fi
       - name: Show all pods
         if: always()
-        run: |
-          kubectl get pods --all-namespaces
+        run: kubectl get pods --all-namespaces
       - name: Nuke resources 
         if: always()
-        run: |
-          make nuke
-
-  d3e-with-crds-no-cluster-roles:
-    needs: dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Make Infra
-        run: |
-          make infra
-      - name: Make d3e with CRDs and no cluster roles
-        run: |
-          make d3e-with-crds-no-cluster-roles
-      - name: Make Sample with CRDs and no cluster roles
-        run: |
-          make sample-with-crds-no-cluster-roles
-      - name: Wait for 1 minute to let the sample app start
-        run: |
-          sleep 60
-      - name: Check pods are ready
-        run: |
-          kubectl wait --for=condition=Ready pods --all --namespace=d3e-sample --timeout=500s
-      - name: Ensure no ClusterRoles with 'dapr' in the name exist
-        run: |
-          if kubectl get clusterroles -o name | grep -q dapr; then
-            echo "❌ Dapr ClusterRoles found:"
-            kubectl get clusterroles | grep dapr
-            exit 1
-          else
-            echo "✅ No Dapr ClusterRoles found"
-          fi
-      - name: Show all pods
-        if: always()
-        run: |
-          kubectl get pods --all-namespaces
-      - name: Nuke resources 
-        if: always()
-        run: |
-          make nuke
-
-  minimal:
-    needs: dependencies
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Make Infra
-        run: |
-          make infra
-      - name: Make d3e Minimal
-        run: |
-          make d3e-minimal
-      - name: Make Sample Minimal
-        run: |
-          make sample-minimal
-      - name: Wait for 1 minute to let the sample app start
-        run: |
-          sleep 60
-      - name: Check pods are ready
-        run: |
-          kubectl wait --for=condition=Ready pods --all --namespace=d3e-sample --timeout=500s
-      - name: Show all pods
-        if: always()
-        run: |
-          kubectl get pods --all-namespaces
-      - name: Nuke resources 
-        if: always()
-        run: |
-          make nuke
+        run: make nuke
