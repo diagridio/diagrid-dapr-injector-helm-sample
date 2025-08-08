@@ -20,7 +20,7 @@ This directory contains template values files for different D3E deployment confi
 **Command**:
 ```bash
 helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
-  --version 1.15.6 \
+  --version 1.15.6-d3e.1 \
   --create-namespace \
   -n d3e-sample \
   -f d3e-configs/minimal-with-crds.yaml
@@ -58,7 +58,7 @@ Features:
 **Command**:
 ```bash
 helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
-  --version 1.15.6 \
+  --version 1.15.6-d3e.1 \
   --create-namespace \
   -n d3e-sample \
   -f d3e-configs/standalone-no-crds.yaml
@@ -79,7 +79,7 @@ helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
 **Command**:
 ```bash
 helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
-  --version 1.15.6 \
+  --version 1.15.6-d3e.1 \
   --create-namespace \
   -n d3e-sample \
   -f d3e-configs/d3e-with-crds-no-cluster-roles.yaml
@@ -119,28 +119,28 @@ d3e-minimal:
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/minimal-with-crds.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
 
 d3e-standalone:
 	helm install \
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/standalone-no-crds.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
 
 d3e-standalone-sentry-automount-disabled:
 	helm install \
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/standalone-no-crds-automount-sentry-disabled \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
 
 d3e-hybrid:
 	helm install \
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/d3e-with-crds-no-cluster-roles.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
 ```
 
 ## Key Differences Explained

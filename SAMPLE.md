@@ -224,7 +224,7 @@ Key configuration points:
 # D3E Control Plane Configuration
 dapr:
   image:
-    tag: "1.15.6"
+    tag: "1.15.6-d3e.1"
   controlPlaneNamespace: "d3e-sample"
 
 # Publisher Service Annotations
