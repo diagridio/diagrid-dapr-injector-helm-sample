@@ -1,0 +1,15 @@
+architecture: standalone
+
+master:
+  persistence:
+    enabled: false
+    size: "20Mi"
+  automountServiceAccountToken: true
+  serviceAccount:
+    automountServiceAccountToken: true
+    create: true
+    name: "redis-master"
+  podAnnotations:
+    consul.hashicorp.com/transparent-proxy: "false"
+    consul.hashicorp.com/connect-inject: "true"
+    consul.hashicorp.com/connect-service: "redis-master"

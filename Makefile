@@ -1,66 +1,22 @@
-infra:
-	sh scripts/init.sh
-
-nuke:
-	sh scripts/nuke.sh
-
 sample:
 	make sample-standalone-no-crds
 
-sample-minimal:
-	helm install \
-		--create-namespace \
-		-n d3e-sample \
-		-f sample-configs/minimal.yaml \
-		d3e-sample .
-
 sample-standalone-no-crds:
-	helm install \
+	helm upgrade --install \
 		--create-namespace \
 		-n d3e-sample \
 		-f sample-configs/standalone-no-crds.yaml \
-		d3e-sample .
-
-sample-with-crds-no-cluster-roles:
-	helm install \
-		--create-namespace \
-		-n d3e-sample \
-		-f sample-configs/d3e-with-crds-no-cluster-roles.yaml \
 		d3e-sample .
 
 d3e: d3e-standalone
 
 # This is the default d3e deployment - no CRDs and no cluster roles.
 d3e-standalone:
-	helm install \
+	helm upgrade --install \
 		--skip-crds \
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/standalone-no-crds.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
-
-# This is the standalone d3e deployment with Sentry automountServiceAccountToken disabled.
-d3e-standalone-sentry-automount-disabled:
-	helm install \
-		--skip-crds \
-		--create-namespace \
-		-n d3e-sample \
-		-f d3e-configs/standalone-no-crds-automount-sentry-disabled.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
-
-# D3E minimal uses CRDs and minimal cluster roles
-d3e-minimal:
-	helm install \
-		--create-namespace \
-		-n d3e-sample \
-		-f d3e-configs/minimal-with-crds.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
-
-d3e-with-crds-no-cluster-roles:
-	helm install \
-		--create-namespace \
-		-n d3e-sample \
-		-f d3e-configs/d3e-with-crds-no-cluster-roles.yaml \
 		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
 
 uninstall:

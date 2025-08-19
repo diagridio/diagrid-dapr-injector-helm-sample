@@ -22,6 +22,7 @@ spec:
         dapr.io/log-level: "debug"
         dapr.io/config: "config"
     spec:
+      serviceAccountName: service-pub-dapr
       containers:
       - name: service-pub
         image: nelsonparente00/pub-fcf22dc88fe149679f05d1e44b8eea63:latest

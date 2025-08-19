@@ -50,7 +50,7 @@ app.kubernetes.io/name: {{ include "deploy.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
-{{/*
+{% comment %} {{/*
 Create the name of the service account to use
 */}}
 {{- define "deploy.serviceAccountName" -}}
@@ -59,4 +59,4 @@ Create the name of the service account to use
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
-{{- end }}
+{{- end }} {% endcomment %}

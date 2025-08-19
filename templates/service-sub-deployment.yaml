@@ -22,6 +22,7 @@ spec:
         dapr.io/log-level: "debug"
         dapr.io/config: "config"
     spec:
+      serviceAccountName: service-sub-dapr
       containers:
       - name: service-sub
         image: nelsonparente00/sub-99ada7c02f01656935ca81349c770d64:latest

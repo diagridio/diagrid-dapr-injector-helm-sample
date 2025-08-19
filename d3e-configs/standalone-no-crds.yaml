@@ -6,7 +6,7 @@
 global:
   tag: "1.15.6-d3e.1"
   mtls:
-    enabled: true
+    enabled: false
   actors:
     enabled: false
   scheduler:
@@ -21,7 +21,7 @@ global:
 
 # D3E token (replace with your actual token)
 diagrid:
-  token: "YOUR_D3E_TOKEN_HERE"
+  token: "alices-token"
 
 dapr_operator:
   enabled: false
@@ -30,6 +30,7 @@ dapr_sidecar_injector:
   enabled: false
 
 dapr_sentry:
+  logLevel: "debug"
   mode: "standalone"
   injectDaprSystemConfig: true
 

@@ -1,6 +1,6 @@
-# D3E Sample Application Guide
+# D3E Sample Application Guide - Hashicorp Consul
 
-This guide demonstrates how to run the Diagrid D3E (Dapr) sample application, which showcases a publisher-subscriber pattern using Redis as the backing store.
+This guide demonstrates how to run the Diagrid D3E (Dapr) sample application, which showcases a publisher-subscriber pattern using Redis as the backing store alongside Hashicorp Consul service mesh.
 
 ## Overview
 
@@ -14,30 +14,59 @@ The sample application consists of:
 
 Before running the sample, ensure you have the following installed:
 
+- A Kubernetes cluster with sufficient resources to run Consul, Dapr etc.
 - [Docker](https://docs.docker.com/get-docker/)
-- [Kind](https://kind.sigs.k8s.io/docs/user/quick-start/) (Kubernetes in Docker)
 - [kubectl](https://kubernetes.io/docs/tasks/tools/)
 - [Helm](https://helm.sh/docs/intro/install/)
 
 ## Quick Start
 
-### 1. Initialize Infrastructure
+### 1. Install Redis on your cluster
 
 Set up the local Kubernetes cluster and required infrastructure:
 
 ```bash
-make infra
+kubectl create namespace d3e-sample # Create the d3e-sample namespace if it is not already created
+
+helm upgrade --install redis oci://registry-1.docker.io/bitnamicharts/redis --version 22.0.3 -n d3e-sample -f redis/values-redis.yaml  
 ```
 
-This command runs `scripts/init.sh` which:
-- Starts a local Docker registry on port 5000
-- Creates a Kind cluster named `d3e-sample`
-- Creates the `d3e-sample` namespace
-- Installs and configures the Kubernetes metrics server
+### 2. Install Hashicorp Consul
 
-### 2. Install D3E Control Plane
+This installation of Consul enables `connectInject` which creates service mesh sidecar proxies that are injected via a [mutating admission webhook](https://developer.hashicorp.com/consul/docs/connect/k8s/inject). It also `transparentProxy` which forces all traffic within the pod to go through the sidecar proxy. Read [consul-values.yaml](./consul/consul-values.yaml) before applying and add any additional configuration needed for your setup.
 
-Install the D3E (Dapr) control plane with specific configurations:
+```bash
+# Consul installation
+helm install --values consul/consul-values.yaml consul hashicorp/consul --create-namespace --namespace consul --version "1.0.0"
+
+export CONSUL_HTTP_TOKEN=$(kubectl get --namespace consul secrets/consul-bootstrap-acl-token --template={{.data.token}} | base64 -d)                                                                     
+export CONSUL_HTTP_ADDR=https://$(kubectl get services/consul-ui --namespace consul -o jsonpath='{.status.loadBalancer.ingress[0].ip}')                                                                    
+export CONSUL_HTTP_SSL_VERIFY=false # To access the Consul UI insecurely.
+echo $CONSUL_HTTP_TOKEN 
+
+# For any sequential Helm upgrades, use the following command
+# helm upgrade --install --values consul-values.yaml consul hashicorp/consul --create-namespace --namespace consul
+```
+
+View the Consul UI at the External IP exposed by the `consul-ui` service. Initially the services will not show up, but at the end, the dashboard should look something like this:
+
+![Consul UI](consul-ui.png)
+
+### 3. Install D3E Control Plane
+
+Install the D3E (Dapr) control plane with the specific configuration `standalone-no-crds`. This allows for the following configuration:
+
+| Feature                   | standalone-no-crds |
+|---------------------------|--------------------|
+| Cluster Roles             | ❌                  |
+| CRDs                      | ❌                  |
+| Cluster Permissions       | Not Required        |
+| Dapr Operator             | ❌                  |
+| Sidecar Injector          | ❌                  |
+| Standalone Mode           | ✅                  |
+| Multi-tenant Safe         | ✅                  |
+| Sentry Automount Disabled | ❌                  |
+
 
 ```bash
 make d3e
@@ -51,17 +80,9 @@ This command installs D3E in standalone mode (no CRDs required) with the followi
 - **Actors**: Disabled (not needed for this sample)
 - **Scheduler**: Disabled (not needed for this sample)
 
-#### Alternative D3E Configurations
+See `d3e-configs/README.md` for more details.
 
-The project includes several D3E configuration templates in the `d3e-configs/` directory:
-
-- **`make d3e-standalone`** (default): Namespaced RBAC, no CRDs - perfect for restricted environments
-- **`make d3e-minimal`**: Cluster-wide RBAC with CRDs - for development/production with full permissions
-- **`make d3e-with-crds-no-cluster-roles`**: Hybrid approach with CRDs but namespaced RBAC
-
-See `d3e-configs/README.md` for detailed configuration comparisons and usage guidelines.
-
-### 3. Deploy the Sample Application
+### 4. Deploy the Sample Application
 
 Deploy the publisher and subscriber services:
 
@@ -139,6 +160,38 @@ func (s *service) handleMessage(ctx context.Context, e *common.TopicEvent) (retr
 }
 ```
 
+### Consul specific resources
+
+Consul requires a Service Account and single service of the same name to map communications to "meshed" applications. Read the docs [here](https://developer.hashicorp.com/consul/docs/connect/k8s/workload).
+
+In this case we are deploying two Service Accounts, one for each Dapr-enabled application.
+
+``` yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: service-sub-dapr
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: service-pub-dapr
+```
+
+Then we are adding these Service Accounts to the pod specifications on each Dapr application as follows, for example for the Publishing service:
+
+``` yaml
+...
+spec:
+   serviceAccountName: service-pub-dapr
+   containers:
+...
+```
+
+Each Dapr application already requires a `<app-id>-dapr` service to be created for Dapr Service invocation, and so the Kubernetes Service objects are already being created per Dapr application in [dapr-services.yaml](./templates/dapr-services.yaml). These are used by Consul to hijack the traffic through Daprd and onto another Dapr service or in this case the Redis message broker.
+
+Lastly in order to wire Redis up with Consul, a ServiceAccount token Secret is required that matches the `redis-master` Service.
+
 ### Dapr Components
 
 The sample uses several Dapr components:
@@ -213,95 +266,6 @@ KEYS *
 # Get a specific message
 GET "123e4567-e89b-12d3-a456-426614174000"
 ```
-
-## Configuration Details
-
-### Helm Values (`values.yaml`)
-
-Key configuration points:
-
-```yaml
-# D3E Control Plane Configuration
-dapr:
-  image:
-    tag: "1.15.6-d3e.1"
-  controlPlaneNamespace: "d3e-sample"
-
-# Publisher Service Annotations
-podAnnotationsPub: 
-  dapr.io/app-id: service-pub
-  dapr.io/enabled: "true"
-  dapr.io/app-port: "8080"
-
-# Subscriber Service Annotations  
-podAnnotationsSub: 
-  dapr.io/app-id: service-sub
-  dapr.io/enabled: "true"
-  dapr.io/app-port: "8080"
-
-# D3E Injector Configuration
-diagrid_dapr_injector:
-  mode: "standalone"
-  injectDaprResources: true
-  configurationFiles:
-    - config.yaml
-```
-
-### Service Deployment (`templates/service-pub-deployment.yaml`)
-
-The publisher deployment includes:
-- Dapr sidecar injection
-- Environment variables for Dapr ports
-- Volume mounts for Dapr resources
-- Health check endpoint
-
-## Troubleshooting
-
-### Common Issues
-
-1. **Pods not starting**:
-   ```bash
-   kubectl describe pod <pod-name> -n d3e-sample
-   ```
-
-2. **Dapr sidecar issues**:
-   ```bash
-   kubectl logs <pod-name> -c daprd -n d3e-sample
-   ```
-
-3. **Redis connection issues**:
-   ```bash
-   kubectl logs deployment/d3e-sample-redis-master -n d3e-sample
-   ```
-
-### Cleanup
-
-To completely remove the sample:
-
-```bash
-make uninstall
-```
-
-To destroy the entire infrastructure:
-
-```bash
-make nuke
-```
-
-## Next Steps
-
-This sample demonstrates:
-- Basic D3E/Dapr setup and configuration
-- Publisher-subscriber pattern implementation
-- State management with Redis
-- Service-to-service communication via Dapr
-
-To extend this sample, consider:
-- Adding more complex message processing
-- Implementing retry policies and circuit breakers
-- Adding metrics and observability
-- Implementing actor patterns
-- Adding authentication and authorization
 
 ## Additional Resources
 

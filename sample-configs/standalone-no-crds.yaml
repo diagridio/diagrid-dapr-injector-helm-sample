@@ -18,15 +18,8 @@ dapr:
     tag: "1.15.6-d3e.1"
     pullPolicy: IfNotPresent
   controlPlaneNamespace: "d3e-sample" # default is Release.Namespace (ie dapr-system)
-
-podAnnotations: 
-  dapr.io/app-id: service-dapr-system-x
-  dapr.io/enable-api-logging: "true"
-  dapr.io/enabled: "true"
-  dapr.io/log-as-json: "false"
-  dapr.io/log-level: debug
-  dapr.io/placement-host-address: ' '
-  dapr.io/scheduler-host-address: ' '
+  mtls:
+    enabled: false
 
 podAnnotationsSub: 
   dapr.io/app-id: service-sub
@@ -51,20 +44,20 @@ podAnnotationsPub:
 podLabels: {}
 podSecurityContext: {}
 securityContext: {}
-service:
-  type: ClusterIP
-  port: 80
+# service:
+#   type: ClusterIP
+#   port: 80
 
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-  hosts:
-    - host: chart-example.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls: []
+# ingress:
+#   enabled: false
+#   className: ""
+#   annotations: {}
+#   hosts:
+#     - host: chart-example.local
+#       paths:
+#         - path: /
+#           pathType: ImplementationSpecific
+#   tls: []
 
 resources: {}
 
