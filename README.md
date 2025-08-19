@@ -1,283 +1,276 @@
-# Diagrid Dapr Injector Helm Library Chart
+# D3E Sample Application Guide - Hashicorp Consul
+
+This guide demonstrates how to run the Diagrid D3E (Dapr) sample application, which showcases a publisher-subscriber pattern using Redis as the backing store alongside Hashicorp Consul service mesh. To read about the diagrid-dapr-injector-helm chart on its own see the main branch.
 
 ## Overview
 
-The Diagrid Dapr Injector is a Helm library chart designed to inject the Dapr sidecar into your Kubernetes application workloads (e.g., Deployments, StatefulSets). This chart is based on the [dapr/dapr](https://github.com/dapr/dapr) project but functions as a library chart rather than a standalone installation.
+The sample application consists of:
+- **Publisher Service** (`service-pub`): Publishes messages to a Redis pub/sub topic every 5 seconds
+- **Subscriber Service** (`service-sub`): Subscribes to the topic and stores received messages in Redis state store
+- **Redis**: Used for both pub/sub messaging and state storage
+- **D3E Control Plane**: Manages the Dapr runtime and components
 
 ## Prerequisites
 
-- Kubernetes cluster
-- Helm 3.x
+Before running the sample, ensure you have the following installed:
 
-## Installation
+- A Kubernetes cluster with sufficient resources to run Consul, Dapr etc.
+- [Docker](https://docs.docker.com/get-docker/)
+- [kubectl](https://kubernetes.io/docs/tasks/tools/)
+- [Helm](https://helm.sh/docs/intro/install/)
 
-This chart is not intended for standalone use. Instead, incorporate it as a dependency in your existing Helm charts.
+## Quick Start
 
-### Step 1: Add the Dependency
+### 1. Install Redis on your cluster
 
-In your Helm chart's `Chart.yaml` file, add the following dependency:
-
-```yaml
-dependencies:
-  - name: diagrid-dapr-injector
-    version: 1.0.0
-    repository: oci://public.ecr.aws/diagrid/d3e-charts
-    alias: diagrid_dapr_injector
-```
-
-Update your Helm chart:
+Set up the local Kubernetes cluster and required infrastructure:
 
 ```bash
-helm dependency update
+kubectl create namespace d3e-sample # Create the d3e-sample namespace if it is not already created
+
+helm upgrade --install redis oci://registry-1.docker.io/bitnamicharts/redis --version 22.0.3 -n d3e-sample -f redis/values-redis.yaml  
 ```
 
-### Step 2: Configure Values
+### 2. Install Hashicorp Consul
 
-In your `values.yaml` file, add any necessary overrides for the injector:
+This installation of Consul enables `connectInject` which creates service mesh sidecar proxies that are injected via a [mutating admission webhook](https://developer.hashicorp.com/consul/docs/connect/k8s/inject). It also `transparentProxy` which forces all traffic within the pod to go through the sidecar proxy. Read [consul-values.yaml](./consul/consul-values.yaml) before applying and add any additional configuration needed for your setup.
 
-```yaml
-dapr:  
-  image: 
-    tag: "1.15.6-d3e.1"
-  ha:
-    enabled: true
-  controlPlaneNamespace: dapr-system
-  controlPlaneTrustDomain: cluster.local
+```bash
+# Consul installation
+helm install --values consul/consul-values.yaml consul hashicorp/consul --create-namespace --namespace consul --version "1.0.0"
 
-podAnnotations:
-  dapr.io/enabled: "true"
-  dapr.io/app-id: "myapp"
-  dapr.io/app-port: "5000"
+export CONSUL_HTTP_TOKEN=$(kubectl get --namespace consul secrets/consul-bootstrap-acl-token --template={{.data.token}} | base64 -d)                                                                     
+export CONSUL_HTTP_ADDR=https://$(kubectl get services/consul-ui --namespace consul -o jsonpath='{.status.loadBalancer.ingress[0].ip}')                                                                    
+export CONSUL_HTTP_SSL_VERIFY=false # To access the Consul UI insecurely.
+echo $CONSUL_HTTP_TOKEN 
+
+# For any sequential Helm upgrades, use the following command
+# helm upgrade --install --values consul-values.yaml consul hashicorp/consul --create-namespace --namespace consul
 ```
 
-### Step 3: Update Workload Templates
+View the Consul UI at the External IP exposed by the `consul-ui` service. Initially the services will not show up, but at the end, the dashboard should look something like this:
 
-Modify your workload templates (e.g., `templates/deployment.yaml`) to include the Dapr sidecar:
+![Consul UI](consul-ui.png)
 
-```yaml
-apiVersion: apps/v1
-kind: Deployment
+### 3. Install D3E Control Plane
+
+Install the D3E (Dapr) control plane with the specific configuration `standalone-no-crds`. This allows for the following configuration:
+
+| Feature                   | standalone-no-crds |
+|---------------------------|--------------------|
+| Cluster Roles             | ❌                  |
+| CRDs                      | ❌                  |
+| Cluster Permissions       | Not Required        |
+| Dapr Operator             | ❌                  |
+| Sidecar Injector          | ❌                  |
+| Standalone Mode           | ✅                  |
+| Multi-tenant Safe         | ✅                  |
+| Sentry Automount Disabled | ❌                  |
+
+
+```bash
+make d3e
+```
+
+This command installs D3E in standalone mode (no CRDs required) with the following key settings:
+- **Namespace**: `d3e-sample`
+- **Mode**: Standalone (no CRDs required)
+- **mTLS**: Enabled for secure communication
+- **RBAC**: Namespaced permissions only
+- **Actors**: Disabled (not needed for this sample)
+- **Scheduler**: Disabled (not needed for this sample)
+
+See `d3e-configs/README.md` for more details.
+
+### 4. Deploy the Sample Application
+
+Deploy the publisher and subscriber services:
+
+```bash
+make sample
+```
+
+This command installs the Helm chart with:
+- Publisher service (`service-pub`) that publishes messages every 5 seconds
+- Subscriber service (`service-sub`) that receives and stores messages
+- Redis for pub/sub and state storage
+- Dapr components (pubsub, statestore, secret store)
+
+## Understanding the Sample
+
+### Architecture
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   service-pub   │───▶│   Redis Pub/Sub │───▶│   service-sub   │
+│   (Publisher)   │    │                 │    │   (Subscriber)  │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+                                │
+                                ▼
+                       ┌─────────────────┐
+                       │   Redis State   │
+                       │     Store       │
+                       └─────────────────┘
+```
+
+### Publisher Service (`samples/pub/main.go`)
+
+The publisher service:
+- Connects to Dapr using the Go SDK
+- Publishes messages every 5 seconds to the `pubsub` component
+- Each message contains:
+  - Unique ID (UUID)
+  - Timestamp
+  - Content with current time
+- Runs an HTTP health check endpoint on port 8080
+
+```go
+// Key publishing logic
+func (s *service) publish() error {
+    msg := message{
+        ID:        uuid.New().String(),
+        Timestamp: time.Now(),
+        Content:   fmt.Sprintf("Message published at %s", time.Now().Format(time.RFC3339)),
+    }
+    // Publish to Redis via Dapr
+    err := s.client.PublishEvent(context.Background(), pubsubName, topic, msgBytes)
+    return err
+}
+```
+
+### Subscriber Service (`samples/sub/main.go`)
+
+The subscriber service:
+- Subscribes to the `pubsub` topic
+- Processes incoming messages
+- Stores each message in the Redis state store using the message ID as the key
+- Logs all processing activities
+
+```go
+// Message handling
+func (s *service) handleMessage(ctx context.Context, e *common.TopicEvent) (retry bool, err error) {
+    // Parse message
+    var msg message
+    json.Unmarshal(jsonData, &msg)
+    
+    // Store in Redis state store
+    key := msg.ID
+    err = s.client.SaveState(ctx, "statestore", key, jsonData, nil)
+    return false, nil
+}
+```
+
+### Consul specific resources
+
+Consul requires a Service Account and single service of the same name to map communications to "meshed" applications. Read the docs [here](https://developer.hashicorp.com/consul/docs/connect/k8s/workload).
+
+In this case we are deploying two Service Accounts, one for each Dapr-enabled application.
+
+``` yaml
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  name: {{ .Release.Name }}-deployment
-  labels:
-    app: {{ .Release.Name }}
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: {{ .Release.Name }}
-  template:
-    metadata:
-      labels:
-        app: {{ .Release.Name }}
-      annotations:
-        {{ toYaml .Values.podAnnotations | nindent 8 | trim}}
-    spec:
-      containers:
-      - name: {{ .Chart.Name }}
-        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
-        imagePullPolicy: {{ .Values.image.pullPolicy }}
-      {{ include "diagrid-dapr-injector.sidecar" (dict "podAnnotations" .Values.podAnnotations "helmCtx" .) | nindent 6 }}
-      volumes:
-        {{ include "diagrid-dapr-injector.volumes" . | nindent 8 }}
-        {{- include "diagrid.dapr.resources-volumes" . | indent 6 }}
-        {{- if .Values.diagrid_dapr_injector.injectDaprResources }}
-        {{- include "diagrid.dapr.resources-volumes" (dict "podAnnotations" .Values.podAnnotations "helmCtx" .) | indent 6 }}
-        {{- end }}
-```
-
-## Configuration
-
-The default values are defined in the [templates/_helpers.tpl](diagrid-dapr-injector/templates/_helpers.tpl) file. Key configuration options include:
-
-- `dapr.image`: Dapr sidecar image settings
-- `dapr.controlPlaneNamespace`: Namespace for the Dapr control plane
-- `dapr.controlPlaneTrustDomain`: Trust domain for the cluster
-- `dapr.actors`: Actor service configuration
-- `dapr.reminders`: Reminder service configuration
-- `dapr.scheduler`: Scheduler settings
-- `dapr.ha`: High availability settings
-- `dapr.mtls`: mTLS configuration
-- `dapr.prometheus`: Prometheus metrics settings
-- `dapr.mode`: Dapr mode (standalone or kubernetes)
-- `dapr.injectDaprResources`: Enable Dapr without CRDs
-- `dapr.configurationFiles`: List of configuration files to be injected into the sidecar
-
-For a complete list of configuration options, refer to the `templates/_helpers.tpl` file in the chart.
-
-### Dapr without CRDs
-
-This Helm library chart enables the use of Dapr without CRDs. To enable this feature, set the injectDaprResources flag to true in your values file:
-
-```yaml
-diagrid_dapr_injector:
-  mode: "standalone"
-  injectDaprResources: true
-  configurationFiles:
-    - config.yaml
-```
-
-In standalone mode, the injector automatically mounts Dapr configurations, components, HTTP endpoints, resiliencies, and subscriptions into the workload. To enable this, ensure that all necessary resource files are placed in `resources/{type}` and listed in your confifuration files listed:
-
-```yaml
-diagrid_dapr_injector:
-  configurationFiles:
-    - config.yaml
-```
-
-The injector then converts these files into ConfigMaps and mounts them into the Dapr sidecar via the `--config` and `--resources-path` arguments.
-
-You need to manually create the required ConfigMaps in the same namespace as the workload. Below are examples of how to generate ConfigMaps for different Dapr resources using the dapr.resource template.
-
-```yaml
-{{- include "dapr.resource" (dict "namespace" .Release.Namespace "files" (.Files.Glob "resources/configurations/*") "name" "dapr-configurations") }}
+  name: service-sub-dapr
 ---
-{{- include "dapr.resource" (dict "namespace" .Release.Namespace "files" (.Files.Glob "resources/components/*") "name" "dapr-components") }}
----
-{{- include "dapr.resource" (dict "namespace" .Release.Namespace "files" (.Files.Glob "resources/httpendpoints/*") "name" "dapr-httpendpoints") }}
----
-{{- include "dapr.resource" (dict "namespace" .Release.Namespace "files" (.Files.Glob "resources/resiliencies/*") "name" "dapr-resiliencies") }}
----
-{{- include "dapr.resource" (dict "namespace" .Release.Namespace "files" (.Files.Glob "resources/subscriptions/*") "name" "dapr-subscriptions") }}
-```
-
-#### Injecting App Services in Standalone Mode
-
-When running daprd in standalone mode, app services must be explicitly injected, as this is typically handled by the Dapr operator in Kubernetes.
-
-To ensure proper service discovery, the name resolution component in the global configuration must be set to target Kubernetes:
-
-```yaml
-nameResolution:
-  component: kubernetes
-``` 
-
-After configuring name resolution, you need to define the necessary services using the following Helm template:
-
-```yaml
-{{- include "diagrid.dapr.service" (dict "appId" "APP_ID_A" "podAnnotations" .Values.podAnnotationsPub "namespace" .Release.Namespace) }}
----
-{{- include "diagrid.dapr.service" (dict "appId" "APP_ID_B" "podAnnotations" .Values.podAnnotationsSub "namespace" .Release.Namespace) }}
-```
-
-
-Replace APP_ID with the appropriate application ID. This ensures that Dapr can correctly resolve and communicate with the injected services.
-
-
-#### Configuring Kubernetes Secret Store
-
-When running Dapr in **Kubernetes mode**, you need to configure a secret store and explicitly reference it in your components. This is required for securely retrieving sensitive values like Redis passwords, API tokens, or connection strings from Kubernetes secrets.
-
-##### 1. Create the Kubernetes Secret Store Component
-
-This component tells Dapr to use Kubernetes as the secret store. Apply the following YAML in your application's namespace:
-
-```yaml
-apiVersion: dapr.io/v1alpha1
-kind: Component
+apiVersion: v1
+kind: ServiceAccount
 metadata:
-  name: kubernetes-secret-store
-  namespace: d3e-sample
+  name: service-pub-dapr
+```
+
+Then we are adding these Service Accounts to the pod specifications on each Dapr application as follows, for example for the Publishing service:
+
+``` yaml
+...
 spec:
-  type: secretstores.kubernetes
-  version: v1
+   serviceAccountName: service-pub-dapr
+   containers:
+...
 ```
 
-In each Dapr component that needs to use secrets, add the auth.secretStore field pointing to the secret store defined above:
+Each Dapr application already requires a `<app-id>-dapr` service to be created for Dapr Service invocation, and so the Kubernetes Service objects are already being created per Dapr application in [dapr-services.yaml](./templates/dapr-services.yaml). These are used by Consul to hijack the traffic through Daprd and onto another Dapr service or in this case the Redis message broker.
 
-```yaml
-auth:
-  secretStore: kubernetes-secret-store
-```
+Lastly in order to wire Redis up with Consul, a ServiceAccount token Secret is required that matches the `redis-master` Service.
 
-#### Kubernetes permissions in Non-Default Dapr namespaces
+### Dapr Components
 
-If your Dapr enabled apps are using components that fetch secrets from non-default namespaces, please follow this guide [here](https://docs.dapr.io/operations/components/component-secrets/#non-default-namespaces)
+The sample uses several Dapr components:
 
+1. **PubSub Component** (`resources/components/pubsub.yaml`):
+   - Type: `pubsub.redis`
+   - Connects to Redis for message queuing
+   - Scoped to both publisher and subscriber services
 
-### Trust Anchors
+2. **State Store Component** (`resources/components/statestore.yaml`):
+   - Type: `state.redis`
+   - Used by subscriber to persist received messages
+   - Connects to the same Redis instance
 
-Trust anchors are essential for verifying the authenticity of the Dapr control plane.
+3. **Secret Store** (`resources/components/kubernetessecretstore.yaml`):
+   - Provides secure access to Redis credentials
+   - Uses Kubernetes secrets for credential management
 
-By default, this sidecar injector library does not require explicit trust anchor configuration when the Dapr control plane and the workload are in the same namespace. In this scenario, the sidecar injector automatically utilizes the default trust anchors for the control plane via the Kubernetes downward API.
+## Monitoring the Application
 
-However, manual configuration of trust anchors is necessary when the Dapr control plane operates in a different namespace than the workload.
-
-In this situation, you must manually supply the trust anchors to the sidecar injector through the `dapr.trustAnchors` field in your values file or Helm command.
-
-To retrieve the trust anchors from the Dapr control plane namespace within a Kubernetes cluster, run the following command:
+### Check Service Status
 
 ```bash
-kubectl get secret -n dapr-system dapr-trust-bundle -o jsonpath="{.data['ca\.crt']}" | base64 -d | tee /tmp/trust-anchors.crt
+# Check all pods in the namespace
+kubectl get pods -n d3e-sample
+
+# Check services
+kubectl get services -n d3e-sample
+
+# Check Dapr components
+kubectl get components -n d3e-sample
 ```
 
-### Passing the Trust Anchors to the Dapr Sidecar Injector
-
-If the workload is in a different namespace than the Dapr control plane, you can pass the trust anchors to the Dapr sidecar injector by setting the `dapr.trustAnchors` field in the `values.yaml` file:
-
-
-```yaml
-dapr:
-  trustAnchors: |
-    -----BEGIN CERTIFICATE-----
-    MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA5+1q1Qy9X/PvO8Vc0P9M
-    ...
-    -----END CERTIFICATE-----
-```
-
-Alternatively, you can pass the trust anchors via the Helm install/upgrade `set` command. For example, if you saved the trust anchors to a file `/tmp/trust-anchors.crt`, you can pass it to the Dapr sidecar injector as follows:
+### View Logs
 
 ```bash
-# also showing passing the image tag, custom control plane namespace, and the trust anchors from a file
-helm template --set dapr.controlPlaneNamespace=dapr-system-3 --set "dapr.image.tag=1.15.6-d3e.1" --set-file dapr.trustAnchors=/tmp/trust-anchors.crt -n dapr-system-3 deploy-sample 
+# Publisher logs
+kubectl logs -f deployment/service-pub -n d3e-sample
+
+# Subscriber logs
+kubectl logs -f deployment/service-sub -n d3e-sample
+
+# Redis logs
+kubectl logs -f deployment/d3e-sample-redis-master -n d3e-sample
 ```
 
-### New Feature: Configurable Sentry Service Account Token Automount
+### Expected Behavior
 
-D3E versions `1.14.5-d3e.1` and `1.15.6-d3e.1` introduce a new feature for managing service account tokens in the Dapr Sentry component:
-- **`global.rbac.sentry.serviceAccount.automount`**: Controls whether the service account token is automatically mounted.
-- **`global.rbac.sentry.serviceAccount.create`**: Determines whether a service account is created (replaces the deprecated `createServiceAccount` field).
+1. **Publisher**: You should see logs like:
+   ```
+   Published message: 123e4567-e89b-12d3-a456-426614174000
+   ```
 
-#### Behavior When Automount Is Disabled
-When `global.rbac.sentry.serviceAccount.automount` is set to `false`:
-- A Kubernetes ServiceAccount (KSA) is created with `automountServiceAccountToken=false`.
-- A corresponding secret is created with the default name `dapr-sentry-token`.
-- You can override the service account name using `global.rbac.sentry.serviceAccount.name`.
+2. **Subscriber**: You should see logs like:
+   ```
+   Processing message - ID: 123e4567-e89b-12d3-a456-426614174000, Timestamp: 2024-01-15T10:30:00Z, Content: Message published at 2024-01-15T10:30:00Z
+   Successfully processed message: 123e4567-e89b-12d3-a456-426614174000
+   ```
 
-To enable Kubernetes API access for Sentry, include the following volume mounts in your `values.yaml`:
+### Access Redis Data
 
-```yaml
-extraVolumeMounts:
-  sentry:
-    - name: kube-api-access
-      mountPath: /var/run/secrets/kubernetes.io/serviceaccount
-      readOnly: true
-extraVolumes:
-  sentry:
-    - name: kube-api-access
-      secret:
-        secretName: dapr-sentry-token
+```bash
+# Port forward to Redis
+kubectl port-forward svc/d3e-sample-redis-master 6379:6379 -n d3e-sample
+
+# Connect to Redis CLI (in another terminal)
+redis-cli
+
+# List all keys (messages stored by subscriber)
+KEYS *
+
+# Get a specific message
+GET "123e4567-e89b-12d3-a456-426614174000"
 ```
 
-#### Example Configuration
-An example configuration for a standalone D3E deployment with automount disabled is available at:
-- [d3e-configs/standalone-no-crds-automount-sentry-disabled.yaml](https://github.com/diagridio/diagrid-dapr-injector-helm-sample/blob/main/d3e-configs/standalone-no-crds-automount-sentry-disabled.yaml)
+## Additional Resources
 
-### D3E Configuration Templates
-
-For complex D3E deployments, this project includes configuration templates in the `d3e-configs/` directory:
-
-- **`minimal-with-crds.yaml`**: Basic deployment with CRDs and cluster-wide RBAC
-- **`standalone-no-crds.yaml`**: Standalone mode without CRDs (namespaced RBAC only)
-- **`standalone-no-crds-automount-sentry-disabled.yaml`**: Standalone mode without CRDs and with Sentry automount disabled
-- **`d3e-with-crds-no-cluster-roles.yaml`**: Hybrid approach with CRDs but namespaced RBAC
-
-These templates help simplify the complex Helm values required for different deployment scenarios. See `d3e-configs/README.md` for detailed usage instructions and configuration comparisons.
-
-## Support
-
-For issues, feature requests, or questions, please file an issue in the [GitHub repository](https://github.com/diagridio/diagrid-dapr-injector).
-
-## Software License Agreement
-
-By using D3E in your applications you are agreeing to comply with the Diagrid D3E Software License Agreement as described [here](https://diagrid.ws/d3e-eula).
+### Documentation
+- [D3E Official Documentation](https://docs.diagrid.io/enterprise-dapr/d3e/)
+- [Dapr Go SDK](https://github.com/dapr/go-sdk)
+- [Dapr Components](https://docs.dapr.io/concepts/components-concept/)
+- [Helm Charts](https://helm.sh/docs/)
