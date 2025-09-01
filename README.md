@@ -1,6 +1,8 @@
 # D3E Sample Application Guide - Hashicorp Consul
 
-This guide demonstrates how to run the Diagrid D3E (Dapr) sample application, which showcases a publisher-subscriber pattern using Redis as the backing store alongside Hashicorp Consul service mesh. To read about the diagrid-dapr-injector-helm chart on its own see the main branch.
+This guide demonstrates how to run the Diagrid D3E (Dapr) sample application, which showcases a publisher-subscriber pattern using Redis as the backing store alongside Hashicorp Consul service mesh. This is a unique deployment scenario as *no Dapr control plane components* are deployed and should only be used in special cases. This setup disables mTLS in Dapr and allows only the `diagrid-dapr-injector` library Helm chart to be used to "inject" the Daprd sidecar into the sample app application pods.
+
+![Dapr_Kubernetes_Consul](Dapr_Kubernetes_Consul.png)
 
 ## Overview
 
@@ -8,7 +10,7 @@ The sample application consists of:
 - **Publisher Service** (`service-pub`): Publishes messages to a Redis pub/sub topic every 5 seconds
 - **Subscriber Service** (`service-sub`): Subscribes to the topic and stores received messages in Redis state store
 - **Redis**: Used for both pub/sub messaging and state storage
-- **D3E Control Plane**: Manages the Dapr runtime and components
+- **diagrid-dapr-injector-helm chart**: A library chart that is a dependency for the applications.
 
 ## Prerequisites
 
@@ -23,7 +25,16 @@ Before running the sample, ensure you have the following installed:
 
 ### 1. Install Redis on your cluster
 
-Set up the local Kubernetes cluster and required infrastructure:
+Set up the local Kubernetes cluster with Redis acting as the message broker and state store. The following Helm values are included to allow Redis to be meshed as part of the service mesh:
+
+```yaml
+  podAnnotations:
+    consul.hashicorp.com/transparent-proxy: "false"
+    consul.hashicorp.com/connect-inject: "true"
+    consul.hashicorp.com/connect-service: "redis-master"
+```
+
+Install Redis:
 
 ```bash
 kubectl create namespace d3e-sample # Create the d3e-sample namespace if it is not already created
@@ -33,7 +44,7 @@ helm upgrade --install redis oci://registry-1.docker.io/bitnamicharts/redis --ve
 
 ### 2. Install Hashicorp Consul
 
-This installation of Consul enables `connectInject` which creates service mesh sidecar proxies that are injected via a [mutating admission webhook](https://developer.hashicorp.com/consul/docs/connect/k8s/inject). It also `transparentProxy` which forces all traffic within the pod to go through the sidecar proxy. Read [consul-values.yaml](./consul/consul-values.yaml) before applying and add any additional configuration needed for your setup.
+This installation of Consul enables `connectInject` which creates service mesh sidecar proxies that are injected via a [mutating admission webhook](https://developer.hashicorp.com/consul/docs/connect/k8s/inject). It also enables `transparentProxy` mode which forces all traffic within the pod to go through the sidecar proxy. Read [consul-values.yaml](./consul/consul-values.yaml) before installing and add any additional configuration needed for your setup.
 
 ```bash
 # Consul installation
@@ -44,7 +55,7 @@ export CONSUL_HTTP_ADDR=https://$(kubectl get services/consul-ui --namespace con
 export CONSUL_HTTP_SSL_VERIFY=false # To access the Consul UI insecurely.
 echo $CONSUL_HTTP_TOKEN 
 
-# For any sequential Helm upgrades, use the following command
+# For sequential Helm upgrades, use the following command
 # helm upgrade --install --values consul-values.yaml consul hashicorp/consul --create-namespace --namespace consul
 ```
 
@@ -52,45 +63,16 @@ View the Consul UI at the External IP exposed by the `consul-ui` service. Initia
 
 ![Consul UI](consul-ui.png)
 
-### 3. Install D3E Control Plane
+### 3. Deploy the Sample Application
 
-Install the D3E (Dapr) control plane with the specific configuration `standalone-no-crds`. This allows for the following configuration:
-
-| Feature                   | standalone-no-crds |
-|---------------------------|--------------------|
-| Cluster Roles             | ❌                  |
-| CRDs                      | ❌                  |
-| Cluster Permissions       | Not Required        |
-| Dapr Operator             | ❌                  |
-| Sidecar Injector          | ❌                  |
-| Standalone Mode           | ✅                  |
-| Multi-tenant Safe         | ✅                  |
-| Sentry Automount Disabled | ❌                  |
-
-
-```bash
-make d3e
-```
-
-This command installs D3E in standalone mode (no CRDs required) with the following key settings:
-- **Namespace**: `d3e-sample`
-- **Mode**: Standalone (no CRDs required)
-- **mTLS**: Enabled for secure communication
-- **RBAC**: Namespaced permissions only
-- **Actors**: Disabled (not needed for this sample)
-- **Scheduler**: Disabled (not needed for this sample)
-
-See `d3e-configs/README.md` for more details.
-
-### 4. Deploy the Sample Application
-
-Deploy the publisher and subscriber services:
+Deploy the publisher and subscriber services with the dependency Helm chart as the `diagrid-injector-helm-chart`:
 
 ```bash
 make sample
 ```
 
 This command installs the Helm chart with:
+
 - Publisher service (`service-pub`) that publishes messages every 5 seconds
 - Subscriber service (`service-sub`) that receives and stores messages
 - Redis for pub/sub and state storage
@@ -98,24 +80,25 @@ This command installs the Helm chart with:
 
 ## Understanding the Sample
 
-### Architecture
+### Application Architecture
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   service-pub   │───▶│   Redis Pub/Sub │───▶│   service-sub   │
-│   (Publisher)   │    │                 │    │   (Subscriber)  │
+│   (Publisher)   │    │     broker      │    │   (Subscriber)  │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
-                                │
-                                ▼
-                       ┌─────────────────┐
-                       │   Redis State   │
-                       │     Store       │
-                       └─────────────────┘
+                                                      │
+                                                      ▼
+                                             ┌─────────────────┐
+                                             │   Redis State   │
+                                             │     Store       │
+                                             └─────────────────┘
 ```
 
 ### Publisher Service (`samples/pub/main.go`)
 
 The publisher service:
+
 - Connects to Dapr using the Go SDK
 - Publishes messages every 5 seconds to the `pubsub` component
 - Each message contains:
@@ -141,9 +124,10 @@ func (s *service) publish() error {
 ### Subscriber Service (`samples/sub/main.go`)
 
 The subscriber service:
+
 - Subscribes to the `pubsub` topic
 - Processes incoming messages
-- Stores each message in the Redis state store using the message ID as the key
+- Stores each message in the Redis `statestore` using the message ID as the key
 - Logs all processing activities
 
 ```go
@@ -159,38 +143,6 @@ func (s *service) handleMessage(ctx context.Context, e *common.TopicEvent) (retr
     return false, nil
 }
 ```
-
-### Consul specific resources
-
-Consul requires a Service Account and single service of the same name to map communications to "meshed" applications. Read the docs [here](https://developer.hashicorp.com/consul/docs/connect/k8s/workload).
-
-In this case we are deploying two Service Accounts, one for each Dapr-enabled application.
-
-``` yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: service-sub-dapr
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: service-pub-dapr
-```
-
-Then we are adding these Service Accounts to the pod specifications on each Dapr application as follows, for example for the Publishing service:
-
-``` yaml
-...
-spec:
-   serviceAccountName: service-pub-dapr
-   containers:
-...
-```
-
-Each Dapr application already requires a `<app-id>-dapr` service to be created for Dapr Service invocation, and so the Kubernetes Service objects are already being created per Dapr application in [dapr-services.yaml](./templates/dapr-services.yaml). These are used by Consul to hijack the traffic through Daprd and onto another Dapr service or in this case the Redis message broker.
-
-Lastly in order to wire Redis up with Consul, a ServiceAccount token Secret is required that matches the `redis-master` Service.
 
 ### Dapr Components
 
@@ -209,6 +161,39 @@ The sample uses several Dapr components:
 3. **Secret Store** (`resources/components/kubernetessecretstore.yaml`):
    - Provides secure access to Redis credentials
    - Uses Kubernetes secrets for credential management
+
+
+### Hashicorp Consul Configuration
+
+Consul requires a Service Account and single K8s Service of the same name as the application to map communications to "meshed" applications. Read the docs [here](https://developer.hashicorp.com/consul/docs/connect/k8s/workload).
+
+In this case we are deploying two Service Accounts, one for each Dapr-enabled application. We are using the existing `-dapr` Kubernetes services and creating Service Accounts of the same name.
+
+``` yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: service-sub-dapr
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: service-pub-dapr
+```
+
+Then we are using these Service Accounts to the pod specifications on each Dapr application as follows, for example for the Publishing service:
+
+``` yaml
+...
+spec:
+   serviceAccountName: service-pub-dapr
+   containers:
+...
+```
+
+Each Dapr application already requires a `<app-id>-dapr` service to be created for Dapr Service invocation, and so the Kubernetes Service objects are already being created per Dapr application in [dapr-services.yaml](./templates/dapr-services.yaml). These are used by Consul to hijack the traffic that goes through the Dapr sidecar (daprd) and encrypt the traffic that is routed to another Dapr service or in this case the Redis message broker.
+
+Lastly in order to wire Redis up with Consul, a ServiceAccount token Secret is required that matches the `redis-master` Service.
 
 ## Monitoring the Application
 

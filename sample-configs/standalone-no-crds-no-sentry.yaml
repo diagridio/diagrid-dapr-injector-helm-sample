@@ -1,3 +1,4 @@
+# Standalone Sample Configuration without mTLS for Sentry service.
 replicaCount: 1
 image:
   repository: nginx
@@ -15,28 +16,32 @@ serviceAccount:
 
 dapr:
   image:
-    tag: "1.15.6-d3e.1"
+    tag: "1.14.5-d3e.1"
     pullPolicy: IfNotPresent
   controlPlaneNamespace: "d3e-sample" # default is Release.Namespace (ie dapr-system)
   mtls:
     enabled: false
+  sentry:
+    enabled: false
+  actors:
+    enabled: false
+  scheduler:
+    enabled: false
 
 podAnnotationsSub: 
   dapr.io/app-id: service-sub
-  dapr.io/enable-api-logging: "true"
+  dapr.io/enable-api-logging: "false"
   dapr.io/enabled: "true"
   dapr.io/log-as-json: "false"
-  dapr.io/log-level: debug
   dapr.io/app-port: "8080"
   dapr.io/placement-host-address: ' '
   dapr.io/scheduler-host-address: ' '
 
 podAnnotationsPub: 
   dapr.io/app-id: service-pub
-  dapr.io/enable-api-logging: "true"
+  dapr.io/enable-api-logging: "false"
   dapr.io/enabled: "true"
   dapr.io/log-as-json: "false"
-  dapr.io/log-level: debug
   dapr.io/app-port: "8080"
   dapr.io/placement-host-address: ' '
   dapr.io/scheduler-host-address: ' '
@@ -44,20 +49,6 @@ podAnnotationsPub:
 podLabels: {}
 podSecurityContext: {}
 securityContext: {}
-# service:
-#   type: ClusterIP
-#   port: 80
-
-# ingress:
-#   enabled: false
-#   className: ""
-#   annotations: {}
-#   hosts:
-#     - host: chart-example.local
-#       paths:
-#         - path: /
-#           pathType: ImplementationSpecific
-#   tls: []
 
 resources: {}
 
@@ -78,3 +69,5 @@ diagrid_dapr_injector:
   enabled: true
   mode: "standalone"
   injectDaprResources: true
+  configurationFiles:
+    - config.yaml
