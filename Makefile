@@ -5,7 +5,7 @@ sample-standalone-no-crds:
 	helm upgrade --install \
 		--create-namespace \
 		-n d3e-sample \
-		-f sample-configs/standalone-no-crds.yaml \
+		-f sample-configs/standalone-no-crds-no-sentry.yaml \
 		d3e-sample .
 
 uninstall:

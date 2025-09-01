@@ -67,6 +67,12 @@ View the Consul UI at the External IP exposed by the `consul-ui` service. Initia
 
 Deploy the publisher and subscriber services with the dependency Helm chart as the `diagrid-injector-helm-chart`:
 
+Update Helm dependencies if you haven't already:
+
+```bash
+helm dependency update . 
+```
+
 ```bash
 make sample
 ```
