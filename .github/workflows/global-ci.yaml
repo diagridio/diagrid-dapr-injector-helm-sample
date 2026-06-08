@@ -11,6 +11,8 @@ jobs:
   test:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
+    env:
+      DIAGRID_TOKEN: ${{ secrets.DIAGRID_TOKEN }}
     
     strategy:
       fail-fast: false
@@ -44,6 +46,14 @@ jobs:
       - name:  checkout code
         uses: actions/checkout@v4
 
+      - name: Validate DIAGRID_TOKEN secret
+        run: |
+          if [ -z "$DIAGRID_TOKEN" ]; then
+            echo "DIAGRID_TOKEN is empty or not configured for this workflow run."
+            echo "Set repository secret DIAGRID_TOKEN, or note that pull_request runs from forks cannot access repository secrets."
+            exit 1
+          fi
+
       - name: Install Dependencies (kind & Helm)
         run: |
           echo "Installing kind..."
@@ -58,6 +68,15 @@ jobs:
 
       - name: Deploy Application
         run: make ${{ matrix.d3e_target }}
+
+      - name: Verify DIAGRID_TOKEN override applied
+        run: |
+          if helm get values dapr -n d3e-sample -a | grep -q 'YOUR_D3E_TOKEN_HERE'; then
+            echo "Placeholder token detected in effective Helm values."
+            echo "Expected DIAGRID_TOKEN to be injected via --set-string diagrid.token."
+            exit 1
+          fi
+          echo "DIAGRID_TOKEN override is applied."
 
       - name: Deploy Sample
         run: make ${{ matrix.sample_target }}
