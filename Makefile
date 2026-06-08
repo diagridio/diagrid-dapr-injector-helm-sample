@@ -4,6 +4,9 @@ infra:
 nuke:
 	sh scripts/nuke.sh
 
+require-diagrid-token:
+	@test -n "$$DIAGRID_TOKEN" || (echo "ERROR: DIAGRID_TOKEN is required (export it locally or set the GitHub Actions secret DIAGRID_TOKEN)." && exit 1)
+
 sample:
 	make sample-standalone-no-crds
 
@@ -31,37 +34,41 @@ sample-with-crds-no-cluster-roles:
 d3e: d3e-standalone
 
 # This is the default d3e deployment - no CRDs and no cluster roles.
-d3e-standalone:
+d3e-standalone: require-diagrid-token
 	helm install \
 		--skip-crds \
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/standalone-no-crds.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
+		--set-string diagrid.token="$$DIAGRID_TOKEN" \
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.16.14-d3e.5
 
 # This is the standalone d3e deployment with Sentry automountServiceAccountToken disabled.
-d3e-standalone-sentry-automount-disabled:
+d3e-standalone-sentry-automount-disabled: require-diagrid-token
 	helm install \
 		--skip-crds \
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/standalone-no-crds-automount-sentry-disabled.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
+		--set-string diagrid.token="$$DIAGRID_TOKEN" \
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.16.14-d3e.5
 
 # D3E minimal uses CRDs and minimal cluster roles
-d3e-minimal:
+d3e-minimal: require-diagrid-token
 	helm install \
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/minimal-with-crds.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
+		--set-string diagrid.token="$$DIAGRID_TOKEN" \
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.16.14-d3e.5
 
-d3e-with-crds-no-cluster-roles:
+d3e-with-crds-no-cluster-roles: require-diagrid-token
 	helm install \
 		--create-namespace \
 		-n d3e-sample \
 		-f d3e-configs/d3e-with-crds-no-cluster-roles.yaml \
-		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.15.6-d3e.1
+		--set-string diagrid.token="$$DIAGRID_TOKEN" \
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version 1.16.14-d3e.5
 
 uninstall:
 	make uninstall-d3e

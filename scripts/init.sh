@@ -11,4 +11,7 @@ kubectl create namespace d3e-sample
 kubectl apply -f https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/components.yaml
 kubectl patch deployment metrics-server -n kube-system --type "json" -p '[{"op": "add", "path": "/spec/template/spec/containers/0/args/-", "value": "--kubelet-insecure-tls"}]'
 
-helm install redis oci://registry-1.docker.io/bitnamicharts/redis --version 18.16.1 -n d3e-sample --set architecture=standalone --set master.persistence.enabled=false --set master.persistence.size=20Mi
+helm repo add valkey https://valkey.io/valkey-helm/ || true
+helm upgrade --install valkey valkey/valkey -n d3e-sample \
+	--set replica.enabled=false \
+	--set auth.enabled=false
