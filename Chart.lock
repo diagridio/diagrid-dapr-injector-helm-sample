@@ -1,6 +1,6 @@
 dependencies:
 - name: diagrid-dapr-injector
   repository: oci://public.ecr.aws/diagrid/d3e-charts
-  version: 1.0.0
-digest: sha256:ff563c8b2dc48c3438211cd308e2fac0c249cd346dd7df312acbd1203f8d1f75
-generated: "2025-08-04T13:31:12.64209+01:00"
+  version: 1.0.2
+digest: sha256:2d277af43064a0c9132afecf9586bc5656b8a159a2b64f0153d0a893e0bc2781
+generated: "2026-06-08T12:19:50.089526+01:00"

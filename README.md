@@ -20,7 +20,7 @@ In your Helm chart's `Chart.yaml` file, add the following dependency:
 ```yaml
 dependencies:
   - name: diagrid-dapr-injector
-    version: 1.0.0
+    version: 1.0.2
     repository: oci://public.ecr.aws/diagrid/d3e-charts
     alias: diagrid_dapr_injector
 ```
@@ -38,7 +38,7 @@ In your `values.yaml` file, add any necessary overrides for the injector:
 ```yaml
 dapr:  
   image: 
-    tag: "1.15.6-d3e.1"
+    tag: "1.16.14-d3e.5"
   ha:
     enabled: true
   controlPlaneNamespace: dapr-system
@@ -77,13 +77,12 @@ spec:
       - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
-      {{ include "diagrid-dapr-injector.sidecar" (dict "podAnnotations" .Values.podAnnotations "helmCtx" .) | nindent 6 }}
+      {{- include "diagrid.dapr.sidecar" (dict "podAnnotations" .Values.podAnnotations "helmCtx" .) | indent 6 }}
       volumes:
-        {{ include "diagrid-dapr-injector.volumes" . | nindent 8 }}
-        {{- include "diagrid.dapr.resources-volumes" . | indent 6 }}
-        {{- if .Values.diagrid_dapr_injector.injectDaprResources }}
-        {{- include "diagrid.dapr.resources-volumes" (dict "podAnnotations" .Values.podAnnotations "helmCtx" .) | indent 6 }}
-        {{- end }}
+      {{- include "diagrid.dapr.identity-token-volume" . | indent 6 }}
+      {{- if .Values.diagrid_dapr_injector.injectDaprResources }}
+      {{- include "diagrid.dapr.resources-volumes" (dict "podAnnotations" .Values.podAnnotations "helmCtx" .) | indent 6 }}
+      {{- end }}
 ```
 
 ## Configuration
@@ -104,6 +103,29 @@ The default values are defined in the [templates/_helpers.tpl](diagrid-dapr-inje
 - `dapr.configurationFiles`: List of configuration files to be injected into the sidecar
 
 For a complete list of configuration options, refer to the `templates/_helpers.tpl` file in the chart.
+
+### File-based Sidecar Logging
+
+The daprd sidecar can write its logs to a file instead of stdout. Set the `dapr.io/log-file` annotation to the desired path. Because the sidecar runs with `readOnlyRootFilesystem: true`, the target directory must be backed by a writable volume, which you mount into the sidecar via the `dapr.io/volume-mounts-rw` annotation (`<volume-name>:<mount-path>`):
+
+```yaml
+podAnnotations:
+  dapr.io/enabled: "true"
+  dapr.io/app-id: "myapp"
+  dapr.io/log-file: "/var/log/dapr/daprd.log"
+  dapr.io/volume-mounts-rw: "dapr-logs:/var/log/dapr"
+```
+
+Declare the matching writable volume on the workload pod — the injector adds the mount to the sidecar, but you provide the volume:
+
+```yaml
+    spec:
+      volumes:
+      - name: dapr-logs
+        emptyDir: {}
+```
+
+> Requires `diagrid-dapr-injector` 1.0.2 or later. Earlier releases either did not render `--log-file` (0.1.0) or rendered it with literal quotes that daprd could not open (1.0.1).
 
 ### Dapr without CRDs
 
@@ -229,7 +251,7 @@ Alternatively, you can pass the trust anchors via the Helm install/upgrade `set`
 
 ```bash
 # also showing passing the image tag, custom control plane namespace, and the trust anchors from a file
-helm template --set dapr.controlPlaneNamespace=dapr-system-3 --set "dapr.image.tag=1.15.6-d3e.1" --set-file dapr.trustAnchors=/tmp/trust-anchors.crt -n dapr-system-3 deploy-sample 
+helm template --set dapr.controlPlaneNamespace=dapr-system-3 --set "dapr.image.tag=1.16.14-d3e.5" --set-file dapr.trustAnchors=/tmp/trust-anchors.crt -n dapr-system-3 deploy-sample 
 ```
 
 ### New Feature: Configurable Sentry Service Account Token Automount

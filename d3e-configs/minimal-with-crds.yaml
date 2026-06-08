@@ -4,7 +4,7 @@
 
 # Global settings
 global:
-  tag: "1.15.6-d3e.1"
+  tag: "1.16.14-d3e.5"
   mtls:
     enabled: true
   actors:
