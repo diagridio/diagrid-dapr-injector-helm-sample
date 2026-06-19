@@ -4,13 +4,12 @@ go 1.24.2
 
 require (
 	github.com/dapr/go-sdk v1.12.0
-	github.com/gorilla/mux v1.8.1
+	github.com/google/uuid v1.6.0
 )
 
 require (
 	github.com/dapr/dapr v1.15.0-rc.17 // indirect
-	github.com/go-chi/chi/v5 v5.1.0 // indirect
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/go-chi/chi/v5 v5.2.2 // indirect
 	go.opentelemetry.io/otel v1.34.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
