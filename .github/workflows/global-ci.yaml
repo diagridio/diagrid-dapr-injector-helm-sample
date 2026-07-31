@@ -11,11 +11,6 @@ jobs:
   test:
     name: ${{ matrix.name }}
     runs-on: ubuntu-latest
-    # TODO: remove once a chart containing diagridio/d3e#451 is released. Until
-    # then the scheduler+actors entry cannot satisfy "no ClusterRoles", because
-    # global.scheduler.mode is ignored by released charts and the scheduler's
-    # cluster-scoped ClusterRole is always created.
-    continue-on-error: ${{ matrix.allow_failure == true }}
     env:
       DIAGRID_TOKEN: ${{ secrets.DIAGRID_TOKEN }}
     
@@ -59,7 +54,12 @@ jobs:
             check_cluster_roles: true
             build_workflow_image: true
             check_workflows: true
-            allow_failure: true
+            # Released charts always create the scheduler's cluster-scoped
+            # `namespaces` ClusterRole, since it is gated on
+            # global.scheduler.enabled alone. Allow that one object, and keep
+            # failing on any other, so this still guards the topology.
+            # TODO: drop once a chart with diagridio/d3e#451 is released.
+            allowed_cluster_roles: "dapr-scheduler$"
 
     steps:
       - name:  checkout code
@@ -173,16 +173,29 @@ jobs:
             echo "✅ No CRDs found"
           fi
 
-      - name: Ensure no Dapr ClusterRoles exist
+      - name: Ensure no unexpected Dapr ClusterRoles exist
         if: matrix.check_cluster_roles
+        env:
+          # Names allowed to still exist, as an ERE. Empty means none are allowed.
+          ALLOWED: ${{ matrix.allowed_cluster_roles }}
         run: |
-          if kubectl get clusterroles -o name | grep -q dapr; then
-            echo "❌ Dapr ClusterRoles found:"
-            kubectl get clusterroles | grep dapr
-            exit 1
+          found=$(kubectl get clusterroles -o name \
+            | sed 's|clusterrole.rbac.authorization.k8s.io/||' | grep -i dapr || true)
+          if [ -n "$ALLOWED" ]; then
+            unexpected=$(printf '%s\n' "$found" | grep -vE "$ALLOWED" | grep -v '^$' || true)
+            if [ -n "$found" ]; then
+              echo "::warning::Expected-but-unwanted Dapr ClusterRoles still present: $(echo $found). Remove the allowed_cluster_roles allowance once a chart with diagridio/d3e#451 is released."
+            fi
           else
-            echo "✅ No Dapr ClusterRoles found"
+            unexpected="$found"
           fi
+          if [ -n "$unexpected" ]; then
+            echo "❌ Unexpected Dapr ClusterRoles found:"
+            printf '%s\n' "$unexpected"
+            exit 1
+          fi
+          echo "✅ No unexpected Dapr ClusterRoles"
+
       - name: Diagnostics on failure
         if: failure()
         run: |
