@@ -58,6 +58,15 @@ dapr_placement:
   mode: "standalone"
 
 dapr_scheduler:
+  # Must match dapr_sentry.mode below. The scheduler asks Sentry for a validator
+  # matching its own mode, so a kubernetes-mode scheduler against a
+  # standalone-mode Sentry dies at startup with:
+  #   failed to retrieve the initial identity: ... the requested validator is
+  #   not enabled
+  # This is the subchart-local value, which every chart reads. global.scheduler.mode
+  # above additionally drops the ClusterRole, but only on a chart carrying #451;
+  # older charts silently ignore it and would fall back to kubernetes mode here.
+  mode: "standalone"
   # 16Gi is the production default; 1Gi is plenty for a local sample cluster.
   cluster:
     storageSize: 1Gi
