@@ -111,27 +111,6 @@ jobs:
         run: |
           kubectl wait --for=condition=Ready pods --all --namespace=d3e-sample --timeout=500s
 
-      - name: Ensure no CRDs exist
-        if: matrix.check_crds
-        run: |
-          if kubectl get crds -o name | grep -q .; then
-            echo "CRDs found:"
-            kubectl get crds
-            exit 1
-          else
-            echo "✅ No CRDs found"
-          fi
-
-      - name: Ensure no Dapr ClusterRoles exist
-        if: matrix.check_cluster_roles
-        run: |
-          if kubectl get clusterroles -o name | grep -q dapr; then
-            echo "❌ Dapr ClusterRoles found:"
-            kubectl get clusterroles | grep dapr
-            exit 1
-          else
-            echo "✅ No Dapr ClusterRoles found"
-          fi
       - name: Verify workflows actually run
         if: matrix.check_workflows
         run: |
@@ -183,6 +162,27 @@ jobs:
           await_completed "$ID"
           echo "✅ delayed workflow $ID completed"
 
+      - name: Ensure no CRDs exist
+        if: matrix.check_crds
+        run: |
+          if kubectl get crds -o name | grep -q .; then
+            echo "CRDs found:"
+            kubectl get crds
+            exit 1
+          else
+            echo "✅ No CRDs found"
+          fi
+
+      - name: Ensure no Dapr ClusterRoles exist
+        if: matrix.check_cluster_roles
+        run: |
+          if kubectl get clusterroles -o name | grep -q dapr; then
+            echo "❌ Dapr ClusterRoles found:"
+            kubectl get clusterroles | grep dapr
+            exit 1
+          else
+            echo "✅ No Dapr ClusterRoles found"
+          fi
       - name: Diagnostics on failure
         if: failure()
         run: |
