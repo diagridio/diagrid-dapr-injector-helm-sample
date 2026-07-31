@@ -1,0 +1,136 @@
+# Sample app config for the workflow example.
+#
+# Same standalone (no CRDs) shape as standalone-no-crds.yaml, but with actors and
+# the scheduler switched on, because Dapr workflows are built on the actor
+# runtime and drive all execution through scheduler-backed reminders.
+#
+# Note what is deliberately absent from podAnnotationsWorkflow below: the
+# `dapr.io/placement-host-address: ' '` and `dapr.io/scheduler-host-address: ' '`
+# annotations used by the other services. Those blank out the addresses to
+# disable actors/scheduler. Omitting them lets the injector resolve the real
+# in-cluster placement and scheduler addresses.
+
+replicaCount: 1
+image:
+  repository: nginx
+  pullPolicy: IfNotPresent
+  tag: ""
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+dapr:
+  image:
+    tag: "1.18.2-d3e.1"
+    pullPolicy: IfNotPresent
+  controlPlaneNamespace: "d3e-sample"
+  actors:
+    enabled: true
+    serviceName: placement
+  scheduler:
+    enabled: true
+  # The scheduler StatefulSet runs 3 replicas, so advertise all of them to the
+  # sidecar rather than only replica 0.
+  ha:
+    enabled: true
+
+# Only the workflow example; the pub/sub sample images are amd64-only.
+pubsub:
+  enabled: false
+
+workflow:
+  enabled: true
+  image:
+    repository: order-processor
+    tag: latest
+    # Image is built straight into the local cluster's daemon
+    # (minikube image build / kind load), so never pull it.
+    pullPolicy: Never
+
+podAnnotationsWorkflow:
+  dapr.io/app-id: service-workflow
+  dapr.io/enabled: "true"
+  dapr.io/app-port: "8080"
+  dapr.io/enable-api-logging: "true"
+  dapr.io/log-as-json: "false"
+  dapr.io/log-level: debug
+  # Set explicitly rather than relying on the injector to derive it. The library
+  # chart gates DAPR_SCHEDULER_HOST_ADDRESS behind
+  # `semverCompare ">=1.14.0" <tag>`, which is false for every D3E tag because
+  # `1.17.7-d3e.1` is a semver prerelease. Without this the sidecar gets no
+  # scheduler address and workflows never progress.
+  dapr.io/scheduler-host-address: "dapr-scheduler-server-0.dapr-scheduler-server.d3e-sample.svc.cluster.local:50006,dapr-scheduler-server-1.dapr-scheduler-server.d3e-sample.svc.cluster.local:50006,dapr-scheduler-server-2.dapr-scheduler-server.d3e-sample.svc.cluster.local:50006"
+
+# The pub/sub services keep actors and the scheduler disabled.
+podAnnotations:
+  dapr.io/app-id: service-dapr-system-x
+  dapr.io/enable-api-logging: "true"
+  dapr.io/enabled: "true"
+  dapr.io/log-as-json: "false"
+  dapr.io/log-level: debug
+  dapr.io/placement-host-address: ' '
+  dapr.io/scheduler-host-address: ' '
+
+podAnnotationsSub:
+  dapr.io/app-id: service-sub
+  dapr.io/enable-api-logging: "true"
+  dapr.io/enabled: "true"
+  dapr.io/log-as-json: "false"
+  dapr.io/log-level: debug
+  dapr.io/app-port: "8080"
+  dapr.io/placement-host-address: ' '
+  dapr.io/scheduler-host-address: ' '
+
+podAnnotationsPub:
+  dapr.io/app-id: service-pub
+  dapr.io/enable-api-logging: "true"
+  dapr.io/enabled: "true"
+  dapr.io/log-as-json: "false"
+  dapr.io/log-level: debug
+  dapr.io/app-port: "8080"
+  dapr.io/placement-host-address: ' '
+  dapr.io/scheduler-host-address: ' '
+
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+service:
+  type: ClusterIP
+  port: 80
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+
+resources: {}
+
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 100
+  targetCPUUtilizationPercentage: 80
+
+volumes: []
+volumeMounts: []
+
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+diagrid_dapr_injector:
+  enabled: true
+  mode: "standalone"
+  injectDaprResources: true

@@ -1,32 +1,34 @@
-{{- if .Values.pubsub.enabled }}
+{{- if .Values.workflow.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: service-sub
+  name: service-workflow
   namespace: {{.Release.Namespace}}
   labels:
-    app: service-sub
+    app: service-workflow
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: service-sub
+      app: service-workflow
   template:
     metadata:
       annotations:
-        {{ toYaml .Values.podAnnotationsSub | nindent 8 | trim}}
+        {{ toYaml .Values.podAnnotationsWorkflow | nindent 8 | trim}}
       labels:
-        app: service-sub
-        dapr.io/app-id: service-sub
+        app: service-workflow
+        dapr.io/app-id: service-workflow
         dapr.io/metrics-enabled: "true"
         dapr.io/sidecar-injected: "{{ .Values.diagrid_dapr_injector.enabled | toString }}"
         dapr.io/log-level: "debug"
         dapr.io/config: "config"
     spec:
       containers:
-      - name: service-sub
-        image: nelsonparente00/sub-99ada7c02f01656935ca81349c770d64:latest
-        imagePullPolicy: Always
+      - name: service-workflow
+        image: {{ .Values.workflow.image.repository }}:{{ .Values.workflow.image.tag }}
+        imagePullPolicy: {{ .Values.workflow.image.pullPolicy }}
+        ports:
+        - containerPort: 8080
         env:
         - name: DAPR_HTTP_PORT
           value: "3500"
@@ -35,11 +37,11 @@ spec:
         - name: APP_PROTOCOL
           value: http
       {{- if .Values.diagrid_dapr_injector.enabled }}
-      {{- include "diagrid.dapr.sidecar" (dict "podAnnotations" .Values.podAnnotationsSub "helmCtx" .) | indent 6 }}
+      {{- include "diagrid.dapr.sidecar" (dict "podAnnotations" .Values.podAnnotationsWorkflow "helmCtx" .) | indent 6 }}
       {{- end }}
       volumes:
       {{- include "diagrid.dapr.identity-token-volume" . | indent 6 }}
       {{- if .Values.diagrid_dapr_injector.injectDaprResources }}
-      {{- include "diagrid.dapr.resources-volumes" (dict "podAnnotations" .Values.podAnnotationsSub "helmCtx" .) | indent 6 }}
+      {{- include "diagrid.dapr.resources-volumes" (dict "podAnnotations" .Values.podAnnotationsWorkflow "helmCtx" .) | indent 6 }}
       {{- end }}
 {{- end }}

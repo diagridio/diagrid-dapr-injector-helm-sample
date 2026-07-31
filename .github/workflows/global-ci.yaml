@@ -42,6 +42,25 @@ jobs:
             check_crds: false
             check_cluster_roles: false
 
+          # Scheduler + actors enabled, but still no CRDs and no ClusterRoles.
+          # Guards the two things that break this topology: the scheduler
+          # dragging in a cluster-scoped ClusterRole, and the sidecar silently
+          # getting no scheduler address (which leaves pods Ready but hangs
+          # every workflow), hence the functional check below.
+          - name: Standalone - No CRDs + Scheduler & Actors
+            d3e_target: d3e-scheduler
+            sample_target: sample-workflows
+            check_crds: true
+            check_cluster_roles: true
+            build_workflow_image: true
+            check_workflows: true
+            # Released charts always create the scheduler's cluster-scoped
+            # `namespaces` ClusterRole, since it is gated on
+            # global.scheduler.enabled alone. Allow that one object, and keep
+            # failing on any other, so this still guards the topology.
+            # TODO: drop once a chart with diagridio/d3e#451 is released.
+            allowed_cluster_roles: "dapr-scheduler$"
+
     steps:
       - name:  checkout code
         uses: actions/checkout@v4
@@ -78,6 +97,10 @@ jobs:
           fi
           echo "DIAGRID_TOKEN override is applied."
 
+      - name: Build workflow sample image into kind
+        if: matrix.build_workflow_image
+        run: make workflow-image-kind
+
       - name: Deploy Sample
         run: make ${{ matrix.sample_target }}
 
@@ -87,6 +110,57 @@ jobs:
       - name: Check pods are ready
         run: |
           kubectl wait --for=condition=Ready pods --all --namespace=d3e-sample --timeout=500s
+
+      - name: Verify workflows actually run
+        if: matrix.check_workflows
+        run: |
+          set -euo pipefail
+          kubectl port-forward -n d3e-sample deploy/service-workflow 8080:8080 &
+          PF=$!
+          trap 'kill $PF 2>/dev/null || true' EXIT
+          for i in $(seq 1 30); do
+            curl -sf --max-time 2 localhost:8080/health >/dev/null 2>&1 && break
+            sleep 2
+          done
+
+          status_of() {
+            curl -s --max-time 5 "localhost:8080/orders/$1" \
+              | python3 -c 'import sys,json;print(json.load(sys.stdin)["status"])'
+          }
+          await_completed() {
+            for i in $(seq 1 40); do
+              s=$(status_of "$1" || echo pending)
+              [ "$s" = "ORCHESTRATION_STATUS_COMPLETED" ] && return 0
+              [ "$s" = "ORCHESTRATION_STATUS_FAILED" ] && { echo "workflow $1 FAILED"; return 1; }
+              sleep 3
+            done
+            echo "workflow $1 did not complete, last status: ${s:-unknown}"
+            kubectl logs -n d3e-sample -l app=service-workflow -c daprd --tail=80 || true
+            return 1
+          }
+
+          echo "--- immediate workflow ---"
+          ID=$(curl -sf --max-time 30 -X POST localhost:8080/orders \
+            -H 'Content-Type: application/json' -d '{"item_name":"cars","quantity":1}' \
+            | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])')
+          await_completed "$ID"
+          echo "✅ workflow $ID completed"
+
+          # A delayed start is fired by the scheduler, so this fails outright if
+          # the sidecar has no scheduler address.
+          echo "--- delayed start (15s) ---"
+          ID=$(curl -sf --max-time 30 -X POST 'localhost:8080/orders?delaySeconds=15' \
+            -H 'Content-Type: application/json' -d '{"item_name":"computers","quantity":1}' \
+            | python3 -c 'import sys,json;print(json.load(sys.stdin)["id"])')
+          sleep 5
+          EARLY=$(status_of "$ID")
+          if [ "$EARLY" = "ORCHESTRATION_STATUS_COMPLETED" ]; then
+            echo "❌ delayed workflow completed early; start time was not honoured"
+            exit 1
+          fi
+          echo "still $EARLY after 5s, as expected"
+          await_completed "$ID"
+          echo "✅ delayed workflow $ID completed"
 
       - name: Ensure no CRDs exist
         if: matrix.check_crds
@@ -99,16 +173,49 @@ jobs:
             echo "✅ No CRDs found"
           fi
 
-      - name: Ensure no Dapr ClusterRoles exist
+      - name: Ensure no unexpected Dapr ClusterRoles exist
         if: matrix.check_cluster_roles
+        env:
+          # Names allowed to still exist, as an ERE. Empty means none are allowed.
+          ALLOWED: ${{ matrix.allowed_cluster_roles }}
         run: |
-          if kubectl get clusterroles -o name | grep -q dapr; then
-            echo "❌ Dapr ClusterRoles found:"
-            kubectl get clusterroles | grep dapr
-            exit 1
+          found=$(kubectl get clusterroles -o name \
+            | sed 's|clusterrole.rbac.authorization.k8s.io/||' | grep -i dapr || true)
+          if [ -n "$ALLOWED" ]; then
+            unexpected=$(printf '%s\n' "$found" | grep -vE "$ALLOWED" | grep -v '^$' || true)
+            if [ -n "$found" ]; then
+              echo "::warning::Expected-but-unwanted Dapr ClusterRoles still present: $(echo $found). Remove the allowed_cluster_roles allowance once a chart with diagridio/d3e#451 is released."
+            fi
           else
-            echo "✅ No Dapr ClusterRoles found"
+            unexpected="$found"
           fi
+          if [ -n "$unexpected" ]; then
+            echo "❌ Unexpected Dapr ClusterRoles found:"
+            printf '%s\n' "$unexpected"
+            exit 1
+          fi
+          echo "✅ No unexpected Dapr ClusterRoles"
+
+      - name: Diagnostics on failure
+        if: failure()
+        run: |
+          echo "=== pods ==="
+          kubectl get pods -n d3e-sample -o wide || true
+          echo "=== not-ready pods: describe + logs ==="
+          for p in $(kubectl get pods -n d3e-sample -o json \
+              | python3 -c 'import sys,json;[print(i["metadata"]["name"]) for i in json.load(sys.stdin)["items"] if any(not c.get("ready") for c in i.get("status",{}).get("containerStatuses",[]))]'); do
+            echo "----- describe $p -----"
+            kubectl describe pod "$p" -n d3e-sample | tail -30 || true
+            for c in $(kubectl get pod "$p" -n d3e-sample -o jsonpath='{.spec.containers[*].name}'); do
+              echo "----- logs $p/$c -----"
+              kubectl logs "$p" -c "$c" -n d3e-sample --tail=60 || true
+              echo "----- previous logs $p/$c -----"
+              kubectl logs "$p" -c "$c" -n d3e-sample --previous --tail=40 2>/dev/null || true
+            done
+          done
+          echo "=== cluster-scoped RBAC ==="
+          kubectl get clusterrole,clusterrolebinding | grep -i dapr || echo "none"
+
       - name: Show all pods
         if: always()
         run: kubectl get pods --all-namespaces

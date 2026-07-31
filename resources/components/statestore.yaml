@@ -9,5 +9,9 @@ spec:
   metadata:
   - name: redisHost
     value: valkey.d3e-sample:6379
+  # Required by actors, and therefore by workflows, which persist their state
+  # through the actor runtime.
+  - name: actorStateStore
+    value: "true"
   type: state.redis
   version: v1

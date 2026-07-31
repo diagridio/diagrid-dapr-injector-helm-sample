@@ -310,3 +310,67 @@ To extend this sample, consider:
 - [Dapr Go SDK](https://github.com/dapr/go-sdk)
 - [Dapr Components](https://docs.dapr.io/concepts/components-concept/)
 - [Helm Charts](https://helm.sh/docs/)
+
+## Workflow example (actors + scheduler)
+
+The pub/sub sample above runs with actors and the scheduler disabled. Dapr
+**workflows** need both: the workflow engine runs on the actor runtime and drives
+all execution through scheduler-backed reminders. Durable timers and
+delayed/scheduled workflow starts are fired by the scheduler, so with the
+scheduler disabled workflows cannot progress at all.
+
+`samples/order-processor` is the upstream
+[dapr/quickstarts order-processor](https://github.com/dapr/quickstarts/tree/master/workflows/go/sdk/order-processor).
+`workflow.go` and `models.go` are verbatim upstream; only `main.go` differs —
+upstream is a console app that places one order and exits, which cannot run as a
+Kubernetes Deployment, so this version registers the same workflow and activities
+and serves HTTP instead.
+
+### Run it
+
+```bash
+# 1. Build the sample image into the cluster (no registry needed)
+make workflow-image-minikube      # or: make workflow-image-kind
+
+# 2. Control plane with actors + scheduler, still CRD-free and ClusterRole-free
+#    (the same config is what actor reminders and the Jobs API need)
+export DIAGRID_TOKEN=<your token>
+make d3e-scheduler
+
+# 3. The workflow app (pub/sub services are disabled in this config)
+make sample-workflows
+```
+
+### Exercise it
+
+```bash
+kubectl port-forward -n d3e-sample deploy/service-workflow 8080:8080
+
+# Place an order
+curl -X POST localhost:8080/orders -H 'Content-Type: application/json' \
+  -d '{"item_name":"cars","quantity":1}'
+
+# Check status
+curl localhost:8080/orders/<id>
+
+# Delayed start - stays PENDING until the scheduler fires it
+curl -X POST 'localhost:8080/orders?delaySeconds=30' \
+  -H 'Content-Type: application/json' -d '{"item_name":"computers","quantity":1}'
+
+# Orders over $5000 wait for approval (an external event)
+curl -X POST localhost:8080/orders -H 'Content-Type: application/json' \
+  -d '{"item_name":"cars","quantity":2}'
+curl -X POST localhost:8080/orders/<id>/approve
+```
+
+### Notes
+
+- The `statestore` component needs `actorStateStore: "true"`. Actors, and
+  therefore workflows, will not start without it.
+- The injector library gates `DAPR_SCHEDULER_HOST_ADDRESS` behind
+  `semverCompare ">=1.14.0" <tag>`, which is false for every D3E tag because
+  `1.18.2-d3e.1` is a semver prerelease. The workflow config therefore sets
+  `dapr.io/scheduler-host-address` explicitly; without it the sidecar gets no
+  scheduler address and workflows hang.
+- Set `pubsub.enabled=false` to run the workflow example on its own. The pub/sub
+  sample images are amd64-only; build them multi-arch with `cd samples && make push`.

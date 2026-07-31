@@ -79,3 +79,45 @@ uninstall-sample:
 
 uninstall-d3e:
 	helm uninstall dapr -n d3e-sample
+
+# ---------------------------------------------------------------------------
+# Workflow sample (dapr/quickstarts order-processor)
+# ---------------------------------------------------------------------------
+
+ORDER_PROCESSOR_IMAGE ?= order-processor:latest
+PLATFORMS ?= linux/amd64,linux/arm64
+D3E_VERSION ?= 1.18.2-d3e.1
+
+# Build the workflow sample image straight into the local cluster's daemon, so
+# no registry is needed. Single-arch, matching whatever the cluster runs on.
+workflow-image-minikube:
+	minikube image build -t $(ORDER_PROCESSOR_IMAGE) samples/order-processor
+
+workflow-image-kind:
+	docker build -t $(ORDER_PROCESSOR_IMAGE) samples/order-processor
+	kind load docker-image --name d3e-sample $(ORDER_PROCESSOR_IMAGE)
+
+# Multi-arch build and push. Needs a docker-container buildx builder:
+#   docker buildx create --name mabuilder --driver docker-container --use
+workflow-image-push:
+	docker buildx build --platform $(PLATFORMS) -t $(ORDER_PROCESSOR_IMAGE) --push samples/order-processor
+
+# Control plane with actors + scheduler enabled, still CRD-free and
+# ClusterRole-free. Needed by anything scheduler-backed: workflows, actor
+# reminders and the Jobs API.
+d3e-scheduler: require-diagrid-token
+	helm install \
+		--skip-crds \
+		--create-namespace \
+		-n d3e-sample \
+		-f d3e-configs/standalone-no-crds-scheduler.yaml \
+		--set-string diagrid.token="$$DIAGRID_TOKEN" \
+		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version $(D3E_VERSION)
+
+# Workflow sample app only (the pub/sub services are disabled in this config).
+sample-workflows:
+	helm install \
+		--create-namespace \
+		-n d3e-sample \
+		-f sample-configs/standalone-no-crds-workflows.yaml \
+		d3e-sample .
