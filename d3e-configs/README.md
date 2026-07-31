@@ -85,18 +85,49 @@ helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
   -f d3e-configs/d3e-with-crds-no-cluster-roles.yaml
 ```
 
+### 5. `standalone-no-crds-scheduler.yaml` - Standalone Mode, No CRDs, With Scheduler & Actors
+**Use case**: Restricted environments that still need scheduler-backed features — Dapr Workflows, actor reminders, or the Jobs API.
+
+`standalone-no-crds.yaml` disables actors and the scheduler, which makes all three of those non-functional. This config enables them while keeping the deployment CRD-free and ClusterRole-free.
+
+**Features**:
+- ✅ Namespaced RBAC only (no cluster permissions)
+- ✅ No CRDs required
+- ✅ Actors + scheduler enabled — workflows, reminders and Jobs API work
+- ✅ Scheduler runs in standalone mode, so it needs no cluster-scoped ClusterRole
+
+**Requirements**:
+- Namespace-level permissions only
+- A chart containing `global.scheduler.mode` ([diagridio/d3e#451](https://github.com/diagridio/d3e/pull/451)). Without it, enabling the scheduler creates a cluster-scoped ClusterRole for `namespaces`.
+- The `statestore` component must set `actorStateStore: "true"`, otherwise actors — and therefore workflows — will not start.
+
+**Command**:
+```bash
+helm install dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr \
+  --version 1.18.2-d3e.1 \
+  --skip-crds \
+  --create-namespace \
+  -n d3e-sample \
+  -f d3e-configs/standalone-no-crds-scheduler.yaml
+```
+
+Or `make d3e-scheduler`, paired with `make sample-workflows` for the workflow sample app.
+
 ## Configuration Comparison
 
-| Feature                   | minimal-with-crds | standalone-no-crds | standalone-no-crds-automount-disabled | d3e-with-crds-no-cluster-roles |
-|---------------------------|-------------------|--------------------|---------------------------------------|--------------------------------|
-| Cluster Roles             | ✅                 | ❌                  | ❌                                     | ❌                              |
-| CRDs                      | ✅                 | ❌                  | ❌                                     | ✅                              |
-| Cluster Permissions       | Required          | Not Required       | Not Required                          | Required to install CRDs only  |
-| Dapr Operator             | ✅                 | ❌                  | ❌                                     | ✅                              |
-| Sidecar Injector          | ✅                 | ❌                  | ❌                                     | ✅                              |
-| Standalone Mode           | ❌                 | ✅                  | ✅                                     | ❌                              |
-| Multi-tenant Safe         | ❌                 | ✅                  | ✅                                     | ⚠️                             |
-| Sentry Automount Disabled | ❌                 | ❌                  | ✅                                     | ❌                              |
+| Feature                   | minimal-with-crds | standalone-no-crds | standalone-no-crds-scheduler | standalone-no-crds-automount-disabled | d3e-with-crds-no-cluster-roles |
+|---------------------------|-------------------|--------------------|------------------------------|---------------------------------------|--------------------------------|
+| Cluster Roles             | ✅                 | ❌                  | ❌                            | ❌                                     | ❌                              |
+| CRDs                      | ✅                 | ❌                  | ❌                            | ❌                                     | ✅                              |
+| Cluster Permissions       | Required          | Not Required       | Not Required                 | Not Required                          | Required to install CRDs only  |
+| Dapr Operator             | ✅                 | ❌                  | ❌                            | ❌                                     | ✅                              |
+| Sidecar Injector          | ✅                 | ❌                  | ❌                            | ❌                                     | ✅                              |
+| Standalone Mode           | ❌                 | ✅                  | ✅                            | ✅                                     | ❌                              |
+| Actors / Placement        | ✅                 | ❌                  | ✅                            | ❌                                     | ✅                              |
+| Scheduler                 | ✅                 | ❌                  | ✅                            | ❌                                     | ✅                              |
+| Workflows / Reminders / Jobs | ✅              | ❌                  | ✅                            | ❌                                     | ✅                              |
+| Multi-tenant Safe         | ❌                 | ✅                  | ✅                            | ✅                                     | ⚠️                             |
+| Sentry Automount Disabled | ❌                 | ❌                  | ❌                            | ✅                                     | ❌                              |
 
 
 ## Usage Instructions
@@ -164,11 +195,13 @@ The project also includes sample application configurations in `sample-configs/`
 - **`sample-configs/minimal.yaml`**: Sample app config for minimal D3E deployment
 - **`sample-configs/standalone-no-crds.yaml`**: Sample app config for standalone D3E (no cluster roles and no CRDs)
 - **`sample-configs/d3e-with-crds-no-cluster-roles.yaml`**: Sample app config for hybrid D3E
+- **`sample-configs/standalone-no-crds-workflows.yaml`**: Workflow sample app, for use with `standalone-no-crds-scheduler.yaml`
 
 These are used by the Makefile commands:
 - `make sample-minimal`
 - `make sample-standalone-no-crds` (default)
 - `make sample-with-crds-no-cluster-roles`
+- `make sample-workflows` (pairs with `make d3e-scheduler`)
 
 ## Troubleshooting
 

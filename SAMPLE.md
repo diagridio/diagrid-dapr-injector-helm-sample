@@ -333,8 +333,9 @@ and serves HTTP instead.
 make workflow-image-minikube      # or: make workflow-image-kind
 
 # 2. Control plane with actors + scheduler, still CRD-free and ClusterRole-free
+#    (the same config is what actor reminders and the Jobs API need)
 export DIAGRID_TOKEN=<your token>
-make d3e-workflows
+make d3e-scheduler
 
 # 3. The workflow app (pub/sub services are disabled in this config)
 make sample-workflows

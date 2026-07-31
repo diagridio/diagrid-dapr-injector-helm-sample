@@ -102,14 +102,15 @@ workflow-image-kind:
 workflow-image-push:
 	docker buildx build --platform $(PLATFORMS) -t $(ORDER_PROCESSOR_IMAGE) --push samples/order-processor
 
-# Control plane with actors + scheduler enabled (needed for workflows), still
-# CRD-free and ClusterRole-free.
-d3e-workflows: require-diagrid-token
+# Control plane with actors + scheduler enabled, still CRD-free and
+# ClusterRole-free. Needed by anything scheduler-backed: workflows, actor
+# reminders and the Jobs API.
+d3e-scheduler: require-diagrid-token
 	helm install \
 		--skip-crds \
 		--create-namespace \
 		-n d3e-sample \
-		-f d3e-configs/standalone-no-crds-workflows.yaml \
+		-f d3e-configs/standalone-no-crds-scheduler.yaml \
 		--set-string diagrid.token="$$DIAGRID_TOKEN" \
 		dapr oci://public.ecr.aws/diagrid/d3e-charts/d3e-dapr --version $(D3E_VERSION)
 

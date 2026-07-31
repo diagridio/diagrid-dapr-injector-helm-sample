@@ -1,10 +1,13 @@
-# Standalone D3E configuration without CRDs, WITH workflows.
+# Standalone D3E configuration without CRDs, WITH actors + scheduler.
 #
-# Same shape as standalone-no-crds.yaml, but actors and the scheduler are enabled
-# because Dapr workflows are built on the actor runtime and drive all execution
-# through scheduler-backed reminders. Durable timers and delayed/scheduled
-# workflow starts are delivered by the scheduler, so with it disabled workflows
-# cannot progress at all.
+# Same shape as standalone-no-crds.yaml, but actors and the scheduler are
+# enabled. Required by everything scheduler-backed:
+#
+#   - Workflows. The engine runs on the actor runtime and drives all execution
+#     through scheduler-backed reminders, so durable timers and
+#     delayed/scheduled starts simply never fire without it.
+#   - Actor reminders.
+#   - The Jobs API.
 #
 # REQUIRES `global.scheduler.mode: standalone`. In the released charts the
 # scheduler's cluster-scoped ClusterRole (`namespaces` get/list/watch) is tied to
