@@ -137,3 +137,25 @@ diagrid_dapr_injector:
   injectDaprResources: true
   configurationFiles:
     - config.yaml
+
+# Workflow sample (dapr/quickstarts order-processor). Disabled by default; it
+# requires actors + scheduler, which the default standalone config turns off.
+workflow:
+  enabled: false
+  image:
+    repository: order-processor
+    tag: latest
+    pullPolicy: IfNotPresent
+
+podAnnotationsWorkflow:
+  dapr.io/app-id: service-workflow
+  dapr.io/enabled: "true"
+  dapr.io/app-port: "8080"
+  dapr.io/enable-api-logging: "true"
+  dapr.io/log-as-json: "false"
+  dapr.io/log-level: debug
+
+# The original pub/sub sample services. Their prebuilt images are amd64-only, so
+# disable them when running on arm64 (or when you only want the workflow example).
+pubsub:
+  enabled: true

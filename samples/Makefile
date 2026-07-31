@@ -1,8 +1,11 @@
 export KO_DOCKER_REPO=docker.io/nelsonparente00
 
+PLATFORMS ?= linux/amd64,linux/arm64
+
+# Publish multi-arch so the images run on both amd64 and arm64 clusters.
 push:
-	ko publish ./pub
-	ko publish ./sub
+	ko publish --platform=$(PLATFORMS) ./pub
+	ko publish --platform=$(PLATFORMS) ./sub
 
 APP_NAMESPACE ?= d3e-sample
 PUB_SERVICE_IMAGE = $(KO_DOCKER_REPO)/pub-service:latest

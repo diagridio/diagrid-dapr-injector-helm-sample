@@ -1,5 +1,11 @@
+{{- if .Values.pubsub.enabled }}
 {{- include "diagrid.dapr.service" (dict "appId" "service-dapr-system-x" "podAnnotations" .Values.podAnnotations "namespace" .Release.Namespace) }}
 ---
 {{- include "diagrid.dapr.service" (dict "appId" "service-pub" "podAnnotations" .Values.podAnnotationsPub "namespace" .Release.Namespace) }}
 ---
 {{- include "diagrid.dapr.service" (dict "appId" "service-sub" "podAnnotations" .Values.podAnnotationsSub "namespace" .Release.Namespace) }}
+{{- end }}
+{{- if .Values.workflow.enabled }}
+---
+{{- include "diagrid.dapr.service" (dict "appId" "service-workflow" "podAnnotations" .Values.podAnnotationsWorkflow "namespace" .Release.Namespace) }}
+{{- end }}
